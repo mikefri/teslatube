@@ -3,51 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mon Spotube</title>
+    <title>Spotube Clone</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://www.youtube.com/iframe_api"></script>
 </head>
 <body>
     <div class="app-container">
         <aside class="sidebar">
-            <h2 class="logo">Spotube Clone</h2>
+            <h2 class="logo">Spotube</h2>
             <nav>
                 <ul>
-                    <li onclick="showSection('search-section')">🏠 Recherche</li>
-                    <li onclick="showSection('playlist-section')">📚 File d'attente</li>
+                    <li class="nav-item" onclick="showSection('search-section')">🏠 Recherche</li>
+                    <hr class="separator">
+                    <li class="nav-item action" onclick="createNewPlaylist()">➕ Créer une playlist</li>
                 </ul>
+                <div id="playlists-nav-list" class="playlists-list">
+                    </div>
             </nav>
         </aside>
 
         <main class="main-content">
             <section id="search-section">
                 <header>
-                    <input type="text" id="search-input" placeholder="Artiste, titre...">
-                    <button id="search-btn">Rechercher</button>
+                    <div class="search-bar">
+                        <input type="text" id="search-input" placeholder="Que voulez-vous écouter ?">
+                        <button id="search-btn">Rechercher</button>
+                    </div>
                 </header>
                 <div id="results" class="music-grid"></div>
             </section>
 
             <section id="playlist-section" style="display:none;">
                 <div class="playlist-header">
-                    <h2 id="playlist-count">0 pistes</h2>
-                    <button onclick="clearPlaylist()" class="btn-clear">Tout effacer</button>
+                    <div class="playlist-info">
+                        <h1 id="active-playlist-name">Ma Playlist</h1>
+                        <p id="playlist-count">0 titres</p>
+                    </div>
+                    <button onclick="deleteCurrentPlaylist()" class="btn-danger">Supprimer la playlist</button>
                 </div>
-                <div id="playlist-list" class="track-list"></div>
+                <div id="playlist-list" class="track-list-view"></div>
             </section>
         </main>
 
         <footer class="player-bar">
             <div class="player-left">
-                <span id="current-track-title">Aucun titre</span>
-                <span id="current-track-artist">Artiste</span>
+                <div class="current-info">
+                    <span id="current-track-title">Aucun titre</span>
+                    <span id="current-track-artist">Artiste</span>
+                </div>
             </div>
             
             <div class="player-center">
-                <div class="main-controls">
-                    <button id="btn-play" onclick="togglePlay()">⏯</button>
+                <div class="player-controls">
+                    <button class="control-btn" onclick="togglePlay()" id="btn-play">▶</button>
                 </div>
-                <div class="progress-container">
+                <div class="progress-area">
                     <span id="time-current">0:00</span>
                     <input type="range" id="progress-bar" value="0" max="100">
                     <span id="time-total">0:00</span>
@@ -55,7 +65,7 @@
                 <div id="player"></div> </div>
 
             <div class="player-right">
-                <span>🔊</span>
+                <span class="vol-icon">🔊</span>
                 <input type="range" id="volume-bar" value="100" max="100">
             </div>
         </footer>
