@@ -1,8 +1,8 @@
-<!-- index.html -->
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mon Spotube</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://www.youtube.com/iframe_api"></script>
@@ -13,26 +13,44 @@
             <h2>Ma Bibliothèque</h2>
             <nav>
                 <ul>
-                    <li>Accueil</li>
-                    <li>Rechercher</li>
+                    <li onclick="showSection('search-section')">🏠 Accueil / Recherche</li>
+                    <li onclick="showSection('playlist-section')">📚 File d'attente</li>
                 </ul>
             </nav>
         </aside>
 
         <main class="main-content">
-            <header>
-                <input type="text" id="search-input" placeholder="Rechercher un titre ou un artiste...">
-                <button onclick="searchMusic()">Rechercher</button>
-            </header>
-            <section id="results" class="music-grid"></section>
+            <section id="search-section">
+                <header>
+                    <input type="text" id="search-input" placeholder="Artiste, titre...">
+                    <button onclick="searchMusic()">Rechercher</button>
+                </header>
+                <div id="results" class="music-grid"></div>
+            </section>
+
+            <section id="playlist-section" style="display:none;">
+                <div class="playlist-header">
+                    <h2 id="playlist-count">0 pistes dans la file d'attente</h2>
+                    <button onclick="clearPlaylist()" class="btn-clear">Tout effacer</button>
+                </div>
+                <div id="playlist-list" class="track-list">
+                    </div>
+            </section>
         </main>
 
         <footer class="player-bar">
-            <div id="player"></div> <!-- Lecteur YouTube masqué -->
+            <div class="player-info">
+                <span id="current-track-title">Aucun titre</span>
+                <span id="current-track-artist"></span>
+            </div>
+            
             <div class="controls">
-                <span id="current-track">Aucun titre en lecture</span>
+                <div id="player"></div>
                 <button id="btn-play" onclick="togglePlay()">⏯</button>
             </div>
+
+            <div class="player-options">
+                </div>
         </footer>
     </div>
     <script src="script.js"></script>
