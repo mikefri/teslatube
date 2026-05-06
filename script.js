@@ -1,105 +1,105 @@
-// Ta clé API (Pense à restreindre son usage sur Google Cloud pour ton domaine .github.io)
 const API_KEY = 'AIzaSyBX9_dZTK6PHaCI9_kOnT4jguY0u64o-54';
 let player;
+let playlist = JSON.parse(localStorage.getItem('mySpotubePlaylist')) || [];
 
-// 1. Initialisation de l'API YouTube IFrame
 function onYouTubeIframeAPIReady() {
     player = new YT.Player('player', {
-        height: '0',
-        width: '0',
-        videoId: '',
-        playerVars: {
-            'autoplay': 0,
-            'controls': 0,
-            'disablekb': 1
-        },
-        events: {
-            'onStateChange': onPlayerStateChange
-        }
+        height: '0', width: '0', videoId: '',
+        events: { 'onStateChange': onPlayerStateChange }
     });
 }
 
-// 2. Fonction de recherche réelle via l'API YouTube
+// Alterner entre Recherche et Playlist
+function showSection(id) {
+    document.getElementById('search-section').style.display = id === 'search-section' ? 'block' : 'none';
+    document.getElementById('playlist-section').style.display = id === 'playlist-section' ? 'block' : 'none';
+    if(id === 'playlist-section') renderPlaylist();
+}
+
 async function searchMusic() {
     const query = document.getElementById('search-input').value;
     if (!query) return;
-
-    const resultsContainer = document.getElementById('results');
-    resultsContainer.innerHTML = "<p style='padding:20px;'>Recherche de mélodies en cours...</p>";
-
-    // URL pour chercher uniquement des vidéos de catégorie Musique (10)
-    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&videoCategoryId=10&maxResults=15&key=${API_KEY}`;
-
+    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&videoCategoryId=10&maxResults=10&key=${API_KEY}`;
+    
     try {
-        const response = await fetch(url);
-        const data = await response.json();
-
-        if (data.items) {
-            const tracks = data.items.map(item => ({
-                id: item.id.videoId,
-                title: item.snippet.title,
-                artist: item.snippet.channelTitle,
-                img: item.snippet.thumbnails.medium.url
-            }));
-            renderResults(tracks);
-        } else {
-            resultsContainer.innerHTML = "<p>Aucun résultat trouvé.</p>";
-        }
-    } catch (error) {
-        console.error("Erreur API YouTube:", error);
-        resultsContainer.innerHTML = "<p>Erreur de connexion à YouTube.</p>";
-    }
+        const res = await fetch(url);
+        const data = await res.json();
+        renderResults(data.items);
+    } catch (e) { console.error(e); }
 }
 
-// 3. Affichage des morceaux dans l'interface
-function renderResults(tracks) {
+function renderResults(items) {
     const container = document.getElementById('results');
     container.innerHTML = '';
-
-    tracks.forEach(track => {
-        const card = document.createElement('div');
-        card.className = 'track-card';
-        // Nettoyage du titre pour éviter les caractères spéciaux bizarres
-        const cleanTitle = track.title.replace(/"/g, '&quot;');
-        
-        card.innerHTML = `
-            <img src="${track.img}" alt="${cleanTitle}">
-            <h4>${track.title.substring(0, 40)}${track.title.length > 40 ? '...' : ''}</h4>
+    items.forEach(item => {
+        const track = {
+            id: item.id.videoId,
+            title: item.snippet.title.replace(/'/g, "&apos;"),
+            artist: item.snippet.channelTitle.replace(/'/g, "&apos;"),
+            img: item.snippet.thumbnails.medium.url
+        };
+        const div = document.createElement('div');
+        div.className = 'track-card';
+        div.innerHTML = `
+            <button class="btn-add-playlist" onclick="event.stopPropagation(); addToPlaylist('${track.id}','${track.title}','${track.artist}','${track.img}')">+</button>
+            <img src="${track.img}">
+            <h4>${track.title.substring(0,30)}...</h4>
             <p>${track.artist}</p>
         `;
-        card.onclick = () => playTrack(track.id, track.title);
-        container.appendChild(card);
+        div.onclick = () => playTrack(track.id, track.title, track.artist);
+        container.appendChild(div);
     });
 }
 
-// 4. Contrôle de la lecture
-function playTrack(id, title) {
+function addToPlaylist(id, title, artist, img) {
+    playlist.push({id, title, artist, img});
+    localStorage.setItem('mySpotubePlaylist', JSON.stringify(playlist));
+    alert('Ajouté à la file d'attente !');
+}
+
+function renderPlaylist() {
+    const container = document.getElementById('playlist-list');
+    container.innerHTML = '';
+    playlist.forEach((track, index) => {
+        const div = document.createElement('div');
+        div.className = 'track-item';
+        div.innerHTML = `
+            <img src="${track.img}">
+            <div class="track-item-info">
+                <h5>${track.title}</h5>
+                <p>${track.artist}</p>
+            </div>
+            <button onclick="event.stopPropagation(); removeItem(${index})">❌</button>
+        `;
+        div.onclick = () => playTrack(track.id, track.title, track.artist);
+        container.appendChild(div);
+    });
+    document.getElementById('playlist-count').innerText = `${playlist.length} pistes dans la file d'attente`;
+}
+
+function playTrack(id, title, artist) {
     player.loadVideoById(id);
-    document.getElementById('current-track').innerText = "Lecture : " + title;
+    document.getElementById('current-track-title').innerText = title;
+    document.getElementById('current-track-artist').innerText = artist;
 }
 
 function togglePlay() {
     const state = player.getPlayerState();
-    if (state === YT.PlayerState.PLAYING) {
-        player.pauseVideo();
-    } else {
-        player.playVideo();
-    }
+    state === 1 ? player.pauseVideo() : player.playVideo();
+}
+
+function removeItem(index) {
+    playlist.splice(index, 1);
+    localStorage.setItem('mySpotubePlaylist', JSON.stringify(playlist));
+    renderPlaylist();
+}
+
+function clearPlaylist() {
+    playlist = [];
+    localStorage.removeItem('mySpotubePlaylist');
+    renderPlaylist();
 }
 
 function onPlayerStateChange(event) {
-    // Si la vidéo est finie (0), on pourrait lancer une autre musique ici
-    if (event.data === YT.PlayerState.ENDED) {
-        console.log("Morceau terminé");
-    }
+    // Si la vidéo finit, on pourrait coder ici la lecture auto du suivant
 }
-
-// 5. Gestion de la touche Entrée pour la recherche
-document.addEventListener('DOMContentLoaded', () => {
-    const input = document.getElementById('search-input');
-    input.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            searchMusic();
-        }
-    });
-});
