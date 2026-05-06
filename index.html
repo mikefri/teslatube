@@ -1,0 +1,40 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Mon Spotube</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://www.youtube.com/iframe_api"></script>
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <h2>Ma Bibliothèque</h2>
+            <nav>
+                <ul>
+                    <li>Accueil</li>
+                    <li>Rechercher</li>
+                </ul>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header>
+                <input type="text" id="search-input" placeholder="Rechercher un titre ou un artiste...">
+                <button onclick="searchMusic()">Rechercher</button>
+            </header>
+            <section id="results" class="music-grid"></section>
+        </main>
+
+        <footer class="player-bar">
+            <div id="player"></div> <!-- Lecteur YouTube masqué -->
+            <div class="controls">
+                <span id="current-track">Aucun titre en lecture</span>
+                <button onclick="togglePlay()">Play/Pause</button>
+            </div>
+        </footer>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
