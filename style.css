@@ -1,9 +1,9 @@
-/* style.css - Version Optimisée "Spotube" */
+/* style.css */
 :root {
     --bg-base: #000000;
     --bg-surface: #121212;
     --bg-card: #181818;
-    --bg-card-hover: #282828;
+    --bg-card-hover: #242424;
     --text-main: #ffffff;
     --text-sub: #b3b3b3;
     --spotify-green: #1db954;
@@ -14,17 +14,18 @@ body {
     color: var(--text-main);
     font-family: 'Circular Sp', sans-serif, 'Segoe UI', Roboto;
     margin: 0;
-    overflow: hidden; /* Empêche le scroll global du navigateur */
+    overflow: hidden;
+    height: 100vh;
 }
 
 .app-container {
     display: grid;
-    grid-template-columns: 260px 1fr;
+    grid-template-columns: 240px 1fr;
     grid-template-rows: 1fr 90px;
     height: 100vh;
 }
 
-/* Sidebar */
+/* ==================== SIDEBAR ==================== */
 .sidebar {
     background-color: var(--bg-base);
     padding: 24px;
@@ -36,29 +37,32 @@ body {
 .sidebar h2 { 
     font-size: 1.2rem; 
     margin-bottom: 10px; 
-    letter-spacing: -0.5px;
+    font-weight: 700;
 }
 
 .sidebar nav ul {
     list-style: none;
     padding: 0;
+    margin: 0;
 }
 
 .sidebar nav li {
     color: var(--text-sub);
     padding: 12px 0;
-    font-size: 0.9rem;
     font-weight: bold;
     cursor: pointer;
-    transition: 0.3s;
+    transition: color 0.2s ease;
 }
 
-.sidebar nav li:hover { color: var(--text-main); }
+.sidebar nav li:hover { 
+    color: var(--text-main); 
+}
 
-/* Main Content */
+
+/* ==================== CONTENU PRINCIPAL ==================== */
 .main-content {
     background: linear-gradient(to bottom, #222222, var(--bg-surface));
-    padding: 20px;
+    padding: 24px;
     overflow-y: auto;
     border-radius: 8px;
     margin: 8px 8px 0 0;
@@ -70,64 +74,61 @@ header {
     margin-bottom: 30px;
     display: flex;
     gap: 12px;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    padding-bottom: 10px;
 }
 
 #search-input {
     background: #2a2a2a;
-    border: 1px solid transparent;
+    border: none;
     border-radius: 500px;
-    padding: 12px 25px;
+    padding: 12px 24px;
     color: white;
-    width: 350px;
+    width: 300px;
     outline: none;
-    transition: border 0.2s;
+    font-size: 0.9rem;
+    transition: background 0.2s ease;
 }
 
 #search-input:focus {
-    border: 1px solid #555;
-    background: #333;
+    background: #3e3e3e;
+    box-shadow: 0 0 0 2px white;
 }
 
 button {
-    background-color: white;
+    background-color: var(--text-main);
+    color: var(--bg-base);
     border: none;
     border-radius: 500px;
-    padding: 10px 25px;
+    padding: 10px 24px;
     font-weight: bold;
     cursor: pointer;
-    transition: transform 0.2s, background-color 0.2s;
+    transition: transform 0.2s ease, background-color 0.2s ease;
 }
 
-button:hover {
+button:hover { 
     transform: scale(1.05);
-    background-color: #f0f0f0;
+    background-color: #f6f6f6;
 }
 
-/* Music Grid */
+
+/* ==================== GRILLE DE CARTES ==================== */
 .music-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     gap: 24px;
-    padding-bottom: 40px;
 }
 
-/* Track Card avec effet de montée */
 .track-card {
     background: var(--bg-card);
     padding: 16px;
     border-radius: 8px;
-    transition: background 0.3s ease, transform 0.3s ease;
     cursor: pointer;
     position: relative;
+    transition: transform 0.2s ease, background-color 0.2s ease;
 }
 
-.track-card:hover {
-    background: var(--bg-card-hover);
-    transform: translateY(-8px);
+.track-card:hover { 
+    background-color: var(--bg-card-hover);
+    transform: translateY(-6px);
 }
 
 .track-card img {
@@ -135,72 +136,82 @@ button:hover {
     aspect-ratio: 1;
     object-fit: cover;
     border-radius: 6px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-    margin-bottom: 16px;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+    margin-bottom: 14px;
 }
 
 .track-card h4 {
     margin: 0;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis; /* Les "..." si le titre est trop long */
+    text-overflow: ellipsis; /* Ajoute les "..." si le titre est trop long */
 }
 
 .track-card p {
     color: var(--text-sub);
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     margin: 8px 0 0 0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-/* Player Bar (Structure 3 colonnes) */
+
+/* ==================== BARRE DE LECTURE (PLAYER) ==================== */
 .player-bar {
     grid-column: span 2;
     background-color: var(--bg-base);
     display: grid;
-    grid-template-columns: 1fr 2fr 1fr; /* Infos | Contrôles | Volume/Options */
+    grid-template-columns: 1fr 1fr 1fr; /* Coupe la barre en 3 zones égales */
     align-items: center;
-    padding: 0 25px;
-    border-top: 1px solid #282828;
+    padding: 0 24px;
+    border-top: 1px solid #1c1c1c;
 }
 
-.player-info {
-    font-size: 0.85rem;
-    color: var(--text-main);
+/* Zone gauche : Titre en cours */
+.track-info-container {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
 }
 
 #current-track {
-    display: block;
-    max-width: 250px;
+    font-size: 0.85rem;
+    color: var(--text-main);
+    font-weight: 500;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    max-width: 250px;
 }
 
+/* Zone centrale : Contrôles de lecture */
 .controls {
     display: flex;
-    flex-direction: column;
+    justify-content: center;
     align-items: center;
-    gap: 8px;
 }
 
 #btn-play {
-    background-color: white;
-    width: 45px;
-    height: 45px;
+    background-color: var(--text-main);
+    color: var(--bg-base);
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
     display: flex;
     justify-content: center;
     align-items: center;
     padding: 0;
-    font-size: 1.2rem;
-    color: black;
+    font-size: 1.1rem;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
 }
 
 #btn-play:hover {
-    transform: scale(1.1);
+    transform: scale(1.08);
+}
+
+#player { 
+    display: none; 
 }
