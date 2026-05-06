@@ -2,6 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mon Spotube</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://www.youtube.com/iframe_api"></script>
@@ -9,7 +10,7 @@
 <body>
     <div class="app-container">
         <aside class="sidebar">
-            <h2>Ma Bibliothèque</h2>
+            <h2 class="logo">Spotube Clone</h2>
             <nav>
                 <ul>
                     <li onclick="showSection('search-section')">🏠 Recherche</li>
@@ -29,7 +30,7 @@
 
             <section id="playlist-section" style="display:none;">
                 <div class="playlist-header">
-                    <h2 id="playlist-count">0 pistes dans la file d'attente</h2>
+                    <h2 id="playlist-count">0 pistes</h2>
                     <button onclick="clearPlaylist()" class="btn-clear">Tout effacer</button>
                 </div>
                 <div id="playlist-list" class="track-list"></div>
@@ -37,15 +38,26 @@
         </main>
 
         <footer class="player-bar">
-            <div class="player-info">
+            <div class="player-left">
                 <span id="current-track-title">Aucun titre</span>
-                <span id="current-track-artist"></span>
+                <span id="current-track-artist">Artiste</span>
             </div>
-            <div class="controls">
-                <div id="player"></div>
-                <button id="btn-play" onclick="togglePlay()">⏯</button>
+            
+            <div class="player-center">
+                <div class="main-controls">
+                    <button id="btn-play" onclick="togglePlay()">⏯</button>
+                </div>
+                <div class="progress-container">
+                    <span id="time-current">0:00</span>
+                    <input type="range" id="progress-bar" value="0" max="100">
+                    <span id="time-total">0:00</span>
+                </div>
+                <div id="player"></div> </div>
+
+            <div class="player-right">
+                <span>🔊</span>
+                <input type="range" id="volume-bar" value="100" max="100">
             </div>
-            <div class="player-options"></div>
         </footer>
     </div>
     <script src="script.js"></script>
