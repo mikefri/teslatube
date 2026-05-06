@@ -2,7 +2,6 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mon Spotube</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://www.youtube.com/iframe_api"></script>
@@ -13,7 +12,7 @@
             <h2>Ma Bibliothèque</h2>
             <nav>
                 <ul>
-                    <li onclick="showSection('search-section')">🏠 Accueil / Recherche</li>
+                    <li onclick="showSection('search-section')">🏠 Recherche</li>
                     <li onclick="showSection('playlist-section')">📚 File d'attente</li>
                 </ul>
             </nav>
@@ -23,7 +22,7 @@
             <section id="search-section">
                 <header>
                     <input type="text" id="search-input" placeholder="Artiste, titre...">
-                    <button onclick="searchMusic()">Rechercher</button>
+                    <button id="search-btn">Rechercher</button>
                 </header>
                 <div id="results" class="music-grid"></div>
             </section>
@@ -33,8 +32,7 @@
                     <h2 id="playlist-count">0 pistes dans la file d'attente</h2>
                     <button onclick="clearPlaylist()" class="btn-clear">Tout effacer</button>
                 </div>
-                <div id="playlist-list" class="track-list">
-                    </div>
+                <div id="playlist-list" class="track-list"></div>
             </section>
         </main>
 
@@ -43,14 +41,11 @@
                 <span id="current-track-title">Aucun titre</span>
                 <span id="current-track-artist"></span>
             </div>
-            
             <div class="controls">
                 <div id="player"></div>
                 <button id="btn-play" onclick="togglePlay()">⏯</button>
             </div>
-
-            <div class="player-options">
-                </div>
+            <div class="player-options"></div>
         </footer>
     </div>
     <script src="script.js"></script>
