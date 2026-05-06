@@ -1,194 +1,382 @@
 const API_KEY = 'AIzaSyBX9_dZTK6PHaCI9_kOnT4jguY0u64o-54';
+
 let player;
+let playlist    = JSON.parse(localStorage.getItem('mySpotubePlaylist')) || [];
+let historyStack = [];
 let progressInterval;
+let isPlaying   = false;
+let isMuted     = false;
+let lastVolume  = 100;
+let queueVisible = true;
+let currentTrack = null;
 
-// STRUCTURE : { "Nom": [{id, title, artist, img}, ...], ... }
-let playlists = JSON.parse(localStorage.getItem('spotube_data')) || { "Favoris": [] };
-let activePlaylist = "Favoris";
-
-/** YOUTUBE API **/
+/* ─── YouTube IFrame API ─── */
 function onYouTubeIframeAPIReady() {
     player = new YT.Player('player', {
         height: '0', width: '0', videoId: '',
+        playerVars: { 'playsinline': 1 },
         events: {
-            'onReady': () => { player.setVolume(100); },
+            'onReady':       () => setVolume(100),
             'onStateChange': onPlayerStateChange
         }
     });
 }
 
-/** NAVIGATION **/
-function showSection(id) {
-    document.getElementById('search-section').style.display = id === 'search-section' ? 'block' : 'none';
-    document.getElementById('playlist-section').style.display = id === 'playlist-section' ? 'block' : 'none';
-    if(id === 'playlist-section') renderPlaylistView();
-}
-
-/** RECHERCHE **/
+/* ═══════════════════════════════════════
+   SEARCH
+═══════════════════════════════════════ */
 async function searchMusic() {
-    const query = document.getElementById('search-input').value;
+    const query = document.getElementById('search-input').value.trim();
     if (!query) return;
-    const container = document.getElementById('results');
-    container.innerHTML = "Recherche...";
 
-    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&videoCategoryId=10&maxResults=15&key=${API_KEY}`;
-    
+    const placeholder = document.getElementById('results-placeholder');
+    const container   = document.getElementById('results');
+    placeholder.style.display = 'none';
+    container.innerHTML = '<div style="color:#b3b3b3;padding:30px 0;font-size:.9rem;">Recherche en cours…</div>';
+
+    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&videoCategoryId=10&maxResults=18&key=${API_KEY}`;
     try {
-        const res = await fetch(url);
+        const res  = await fetch(url);
         const data = await res.json();
-        renderResults(data.items);
-    } catch (e) { container.innerHTML = "Erreur de connexion."; }
+        if (data.error) { container.innerHTML = '<div style="color:#b3b3b3;padding:30px 0;">Clé API expirée ou quota dépassé.</div>'; return; }
+        renderResults(data.items || []);
+    } catch (e) {
+        container.innerHTML = '<div style="color:#b3b3b3;padding:30px 0;">Erreur réseau.</div>';
+    }
 }
 
 function renderResults(items) {
     const container = document.getElementById('results');
     container.innerHTML = '';
+
     items.forEach(item => {
-        const t = { id: item.id.videoId, title: item.snippet.title, artist: item.snippet.channelTitle, img: item.snippet.thumbnails.medium.url };
-        const card = document.createElement('div');
-        card.className = 'track-card';
-        card.innerHTML = `
-            <button class="btn-add-playlist" title="Ajouter à ${activePlaylist}">+</button>
-            <img src="${t.img}">
-            <h4>${t.title}</h4>
-            <p>${t.artist}</p>
-        `;
-        card.onclick = () => playTrack(t.id, t.title, t.artist);
-        card.querySelector('.btn-add-playlist').onclick = (e) => {
-            e.stopPropagation();
-            addToActivePlaylist(t);
+        const t = {
+            id:     item.id.videoId,
+            title:  item.snippet.title,
+            artist: item.snippet.channelTitle,
+            img:    item.snippet.thumbnails.medium.url
         };
-        container.appendChild(card);
+
+        const div = document.createElement('div');
+        div.className = 'track-card';
+        div.innerHTML = `
+            <button class="btn-add-playlist" title="Ajouter à la file d'attente">+</button>
+            <div class="card-img-wrap">
+                <img src="${t.img}" alt="" loading="lazy">
+                <button class="card-play-btn" title="Lire">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="#000"><path d="M7.05 3.606l13.49 7.788a.7.7 0 010 1.212L7.05 20.394A.7.7 0 016 19.788V4.212a.7.7 0 011.05-.606z"/></svg>
+                </button>
+            </div>
+            <h4 title="${escHtml(t.title)}">${escHtml(t.title)}</h4>
+            <p>${escHtml(t.artist)}</p>
+        `;
+
+        div.addEventListener('click', () => playTrack(t));
+        div.querySelector('.card-play-btn').addEventListener('click', e => { e.stopPropagation(); playTrack(t); });
+        div.querySelector('.btn-add-playlist').addEventListener('click', e => {
+            e.stopPropagation();
+            addToPlaylist(t);
+            const btn = e.currentTarget;
+            const orig = btn.textContent;
+            btn.textContent = '✓';
+            btn.style.cssText = 'background:var(--green);color:#000;display:flex;';
+            setTimeout(() => { btn.textContent = orig; btn.style.cssText = ''; }, 1500);
+        });
+
+        container.appendChild(div);
     });
 }
 
-/** LECTURE **/
-function playTrack(id, title, artist) {
-    if(!player) return;
-    player.loadVideoById(id);
-    document.getElementById('current-track-title').innerText = title;
-    document.getElementById('current-track-artist').innerText = artist;
-    document.getElementById('btn-play').innerText = '⏸';
-    
+/* ═══════════════════════════════════════
+   PLAYBACK
+═══════════════════════════════════════ */
+function playTrack(t) {
+    if (!player || !player.loadVideoById) return;
+
+    if (currentTrack) historyStack.push(currentTrack);
+    currentTrack = t;
+
+    player.loadVideoById(t.id);
+    updatePlayerUI(t);
+    setPlayState(true);
+
     clearInterval(progressInterval);
-    progressInterval = setInterval(updateProgress, 1000);
+    progressInterval = setInterval(updateProgress, 500);
+
+    document.title = `${t.title} — Spotube`;
+}
+
+function updatePlayerUI(t) {
+    document.getElementById('current-track-title').textContent  = t.title;
+    document.getElementById('current-track-artist').textContent = t.artist;
+
+    const imgEl    = document.getElementById('current-track-img');
+    const pholder  = document.getElementById('thumb-placeholder');
+
+    if (t.img) {
+        imgEl.src          = t.img;
+        imgEl.style.display = 'block';
+        pholder.style.display = 'none';
+    } else {
+        imgEl.style.display   = 'none';
+        pholder.style.display = 'flex';
+    }
+}
+
+function setPlayState(playing) {
+    isPlaying = playing;
+    document.getElementById('icon-play').style.display  = playing ? 'none'  : 'block';
+    document.getElementById('icon-pause').style.display = playing ? 'block' : 'none';
 }
 
 function togglePlay() {
+    if (!player || !player.getPlayerState) return;
     const state = player.getPlayerState();
-    if (state === 1) { player.pauseVideo(); document.getElementById('btn-play').innerText = '▶'; }
-    else { player.playVideo(); document.getElementById('btn-play').innerText = '⏸'; }
+    if (state === 1) { player.pauseVideo(); setPlayState(false); }
+    else             { player.playVideo();  setPlayState(true);  }
 }
 
-function updateProgress() {
-    if (player && player.getCurrentTime) {
-        const current = player.getCurrentTime();
-        const duration = player.getDuration();
-        if (duration > 0) {
-            const pct = (current / duration) * 100;
-            document.getElementById('progress-bar').value = pct;
-            document.getElementById('time-current').innerText = formatTime(current);
-            document.getElementById('time-total').innerText = formatTime(duration);
-        }
+function nextTrack() {
+    if (playlist.length > 0) {
+        const next = playlist.shift();
+        savePlaylist();
+        playTrack(next);
+        renderPlaylist();
     }
 }
 
-function formatTime(s) {
-    const m = Math.floor(s / 60);
-    const rs = Math.floor(s % 60);
-    return `${m}:${rs < 10 ? '0' : ''}${rs}`;
-}
-
-/** GESTION PLAYLISTS **/
-function createNewPlaylist() {
-    const name = prompt("Nom de la playlist :");
-    if (name && !playlists[name]) {
-        playlists[name] = [];
-        activePlaylist = name;
-        saveAndRefresh();
+function prevTrack() {
+    if (historyStack.length > 0) {
+        const prev = historyStack.pop();
+        if (currentTrack) playlist.unshift(currentTrack);
+        currentTrack = null;
+        savePlaylist();
+        renderPlaylist();
+        playTrack(prev);
+    } else if (player && player.seekTo) {
+        player.seekTo(0, true);
     }
 }
 
-function addToActivePlaylist(track) {
-    playlists[activePlaylist].push(track);
-    saveAndRefresh();
-    alert(`Ajouté à ${activePlaylist}`);
-}
-
-function renderPlaylistView() {
-    const container = document.getElementById('playlist-list');
-    document.getElementById('active-playlist-name').innerText = activePlaylist;
-    container.innerHTML = '';
-    
-    const list = playlists[activePlaylist];
-    document.getElementById('playlist-count').innerText = `${list.length} titres`;
-
-    list.forEach((t, i) => {
-        const item = document.createElement('div');
-        item.className = 'track-item';
-        item.innerHTML = `
-            <img src="${t.img}">
-            <div class="item-info"><h5>${t.title}</h5><p>${t.artist}</p></div>
-            <button onclick="event.stopPropagation(); removeFromPlaylist(${i})" style="background:none;border:none;color:grey;cursor:pointer;">✕</button>
-        `;
-        item.onclick = () => playTrack(t.id, t.title, t.artist);
-        container.appendChild(item);
-    });
-}
-
-function updateSidebar() {
-    const nav = document.getElementById('playlists-nav-list');
-    nav.innerHTML = '';
-    Object.keys(playlists).forEach(name => {
-        const li = document.createElement('div');
-        li.className = `nav-item ${name === activePlaylist ? 'active-nav' : ''}`;
-        li.innerText = `📁 ${name}`;
-        li.onclick = () => { activePlaylist = name; showSection('playlist-section'); updateSidebar(); };
-        nav.appendChild(li);
-    });
-}
-
-function removeFromPlaylist(index) {
-    playlists[activePlaylist].splice(index, 1);
-    saveAndRefresh();
-}
-
-function deleteCurrentPlaylist() {
-    if (activePlaylist === "Favoris") return alert("Impossible de supprimer la playlist par défaut.");
-    if (confirm(`Supprimer ${activePlaylist} ?`)) {
-        delete playlists[activePlaylist];
-        activePlaylist = "Favoris";
-        saveAndRefresh();
-        showSection('search-section');
-    }
-}
-
-function saveAndRefresh() {
-    localStorage.setItem('spotube_data', JSON.stringify(playlists));
-    updateSidebar();
-    if (document.getElementById('playlist-section').style.display === 'block') renderPlaylistView();
-}
-
-/** EVENTS **/
 function onPlayerStateChange(event) {
-    if (event.data === YT.PlayerState.ENDED) {
-        // Optionnel : Enchaînement automatique dans la playlist active
+    const S = YT.PlayerState;
+    if (event.data === S.ENDED)   { nextTrack(); }
+    if (event.data === S.PAUSED)  { setPlayState(false); }
+    if (event.data === S.PLAYING) { setPlayState(true);  }
+}
+
+/* ═══════════════════════════════════════
+   PROGRESS BAR
+═══════════════════════════════════════ */
+function updateProgress() {
+    if (!player || !player.getCurrentTime) return;
+    const current  = player.getCurrentTime();
+    const duration = player.getDuration();
+    if (duration > 0) {
+        const pct = (current / duration) * 100;
+        setRangeValue('progress-bar', pct, '#535353');
+        document.getElementById('time-current').textContent = formatTime(current);
+        document.getElementById('time-total').textContent   = formatTime(duration);
     }
 }
 
-document.getElementById('progress-bar').oninput = function() {
+document.getElementById('progress-bar').addEventListener('input', function () {
+    if (!player || !player.getDuration) return;
     const newTime = (this.value / 100) * player.getDuration();
-    player.seekTo(newTime);
-};
+    player.seekTo(newTime, true);
+    setRangeValue('progress-bar', +this.value, '#535353');
+});
 
-document.getElementById('volume-bar').oninput = function() {
-    player.setVolume(this.value);
-};
+/* ═══════════════════════════════════════
+   VOLUME
+═══════════════════════════════════════ */
+document.getElementById('volume-bar').addEventListener('input', function () {
+    setVolume(+this.value);
+    isMuted = (+this.value === 0);
+    updateVolIcon();
+});
 
-document.getElementById('search-btn').onclick = searchMusic;
-document.getElementById('search-input').onkeypress = (e) => { if(e.key === 'Enter') searchMusic(); };
+function setVolume(vol) {
+    document.getElementById('volume-bar').value = vol;
+    setRangeValue('volume-bar', vol, '#535353');
+    if (player && player.setVolume) player.setVolume(vol);
+}
 
-// Initialisation
-window.onload = () => {
-    updateSidebar();
-};
+function toggleMute() {
+    if (isMuted) {
+        isMuted = false;
+        setVolume(lastVolume || 100);
+    } else {
+        lastVolume = +document.getElementById('volume-bar').value || 100;
+        isMuted = true;
+        setVolume(0);
+    }
+    updateVolIcon();
+}
+
+function updateVolIcon() {
+    document.getElementById('icon-vol-on').style.display  = isMuted ? 'none'  : 'block';
+    document.getElementById('icon-vol-off').style.display = isMuted ? 'block' : 'none';
+}
+
+/* ═══════════════════════════════════════
+   RANGE FILL HELPER (JS-driven gradient)
+═══════════════════════════════════════ */
+function setRangeValue(id, pct, trackColor) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const fill = (id === 'volume-bar') ? '#ffffff' : '#ffffff';
+    const hover= (id === 'volume-bar') ? '#1db954' : '#1db954';
+    el.style.background = `linear-gradient(to right, ${fill} ${pct}%, ${trackColor} ${pct}%)`;
+    el.dataset.pct = pct;
+}
+
+/* Update progress bar fill color on hover (green) */
+['progress-bar', 'volume-bar'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('mouseenter', () => {
+        const pct = el.dataset.pct || el.value;
+        el.style.background = `linear-gradient(to right, #1db954 ${pct}%, #535353 ${pct}%)`;
+    });
+    el.addEventListener('mouseleave', () => {
+        const pct = el.dataset.pct || el.value;
+        el.style.background = `linear-gradient(to right, #ffffff ${pct}%, #535353 ${pct}%)`;
+    });
+    el.addEventListener('input', () => {
+        const pct = el.value;
+        el.dataset.pct = pct;
+        const isHovered = el.matches(':hover');
+        const color = isHovered ? '#1db954' : '#ffffff';
+        el.style.background = `linear-gradient(to right, ${color} ${pct}%, #535353 ${pct}%)`;
+    });
+});
+
+/* ═══════════════════════════════════════
+   QUEUE / PLAYLIST
+═══════════════════════════════════════ */
+function addToPlaylist(t) {
+    playlist.push(t);
+    savePlaylist();
+    renderPlaylist();
+}
+
+function savePlaylist() {
+    localStorage.setItem('mySpotubePlaylist', JSON.stringify(playlist));
+}
+
+function renderPlaylist() {
+    const container = document.getElementById('playlist-list');
+    const countEl   = document.getElementById('playlist-count');
+    const n = playlist.length;
+    countEl.textContent = n === 0 ? 'File d\'attente vide'
+        : `${n} piste${n > 1 ? 's' : ''} dans la file d'attente`;
+
+    container.innerHTML = '';
+    playlist.forEach((t, i) => {
+        const div = document.createElement('div');
+        div.className = 'queue-item';
+        div.innerHTML = `
+            <span class="queue-drag">⠿⠿</span>
+            <div class="queue-thumb-wrap">
+                <img class="queue-thumb" src="${t.img}" alt="" onerror="this.style.display='none'">
+                <div class="queue-play-overlay">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="#fff"><path d="M7.05 3.606l13.49 7.788a.7.7 0 010 1.212L7.05 20.394A.7.7 0 016 19.788V4.212a.7.7 0 011.05-.606z"/></svg>
+                </div>
+            </div>
+            <div class="queue-info">
+                <span class="queue-title" title="${escHtml(t.title)}">${escHtml(t.title)}</span>
+                <span class="queue-artist">${escHtml(t.artist)}</span>
+            </div>
+            <span class="queue-duration">--:--</span>
+            <button class="queue-more-btn" title="Plus d'options">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M4.5 13.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm15 0a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm-7.5 0a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"/></svg>
+            </button>
+        `;
+
+        div.addEventListener('click', () => {
+            playlist.splice(i, 1);
+            savePlaylist();
+            playTrack(t);
+            renderPlaylist();
+        });
+
+        div.querySelector('.queue-more-btn').addEventListener('click', e => {
+            e.stopPropagation();
+            playlist.splice(i, 1);
+            savePlaylist();
+            renderPlaylist();
+        });
+
+        container.appendChild(div);
+    });
+}
+
+function clearPlaylist() {
+    playlist = [];
+    savePlaylist();
+    renderPlaylist();
+}
+
+function toggleQueue() {
+    queueVisible = !queueVisible;
+    document.getElementById('app').classList.toggle('queue-hidden', !queueVisible);
+    const btn = document.getElementById('btn-queue-toggle');
+    btn.classList.toggle('active', queueVisible);
+}
+
+/* ═══════════════════════════════════════
+   SHUFFLE / REPEAT (visual toggle only)
+═══════════════════════════════════════ */
+document.getElementById('btn-shuffle').addEventListener('click', function () {
+    this.classList.toggle('active');
+});
+document.getElementById('btn-repeat').addEventListener('click', function () {
+    this.classList.toggle('active');
+});
+document.getElementById('btn-heart').addEventListener('click', function () {
+    this.classList.toggle('active');
+});
+
+/* ═══════════════════════════════════════
+   KEYBOARD SHORTCUTS
+═══════════════════════════════════════ */
+document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT') return;
+    if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+    if (e.code === 'ArrowRight') { e.preventDefault(); nextTrack(); }
+    if (e.code === 'ArrowLeft')  { e.preventDefault(); prevTrack(); }
+});
+
+/* ═══════════════════════════════════════
+   UTILS
+═══════════════════════════════════════ */
+function formatTime(sec) {
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+}
+
+function escHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function focusSearch() {
+    document.getElementById('search-input').focus();
+}
+
+/* ═══════════════════════════════════════
+   INIT
+═══════════════════════════════════════ */
+document.getElementById('search-btn').addEventListener('click', searchMusic);
+document.getElementById('search-input').addEventListener('keypress', e => {
+    if (e.key === 'Enter') searchMusic();
+});
+
+// Init volume bar display
+setRangeValue('volume-bar', 100, '#535353');
+renderPlaylist();
