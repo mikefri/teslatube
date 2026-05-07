@@ -156,21 +156,35 @@ async function searchMusic() {
         const res  = await fetch(url);
         const data = await res.json();
         if (data.error) { container.innerHTML = `<div style="color:#b3b3b3;padding:24px 0;">Erreur : ${data.error.message}</div>`; return; }
-        renderResults(data.items || []);
+
+        const items = data.items || [];
+
+        // ── Récupérer les durées ──
+        const ids = items.map(i => i.id.videoId).join(',');
+        const detailsUrl = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${ids}&key=${YOUTUBE_API_KEY}`;
+        const detailsRes  = await fetch(detailsUrl);
+        const detailsData = await detailsRes.json();
+        const durMap = {};
+        (detailsData.items || []).forEach(v => {
+            durMap[v.id] = parseISO8601Duration(v.contentDetails.duration);
+        });
+
+        renderResults(items, durMap);
     } catch (e) {
         container.innerHTML = '<div style="color:#b3b3b3;padding:24px 0;">Erreur réseau.</div>';
     }
 }
 
-function renderResults(items) {
+function renderResults(items, durMap = {}) {
     const container = document.getElementById('results');
     container.innerHTML = '';
     items.forEach(item => {
         const t = {
-            id:     item.id.videoId,
-            title:  item.snippet.title,
-            artist: item.snippet.channelTitle,
-            img:    item.snippet.thumbnails.medium.url
+            id:       item.id.videoId,
+            title:    item.snippet.title,
+            artist:   item.snippet.channelTitle,
+            img:      item.snippet.thumbnails.medium.url,
+            duration: durMap[item.id.videoId] || '--:--'   // ← nouveau
         };
         const div = document.createElement('div');
         div.className = 'track-card';
@@ -349,7 +363,7 @@ function renderQueue() {
                 <span class="queue-title">${esc(t.title)}</span>
                 <span class="queue-artist">${esc(t.artist)}</span>
             </div>
-            <span class="queue-duration">--:--</span>
+            <span class="queue-duration">${t.duration || '--:--'}</span>
             <button class="queue-more-btn" title="Supprimer">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M5.25 5.25a.75.75 0 000 1.5h.75v11.25A2.25 2.25 0 008.25 20.25h7.5A2.25 2.25 0 0018 18V6.75h.75a.75.75 0 000-1.5H5.25zm2.25 1.5h9V18a.75.75 0 01-.75.75h-7.5a.75.75 0 01-.75-.75V6.75zm2.25-3a.75.75 0 000 1.5h3a.75.75 0 000-1.5h-3z"/></svg>
             </button>
@@ -547,7 +561,7 @@ function renderPlaylistView(id) {
                 <button class="pl-tr-remove" title="Retirer de la playlist">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M5.25 5.25a.75.75 0 000 1.5h.75v11.25A2.25 2.25 0 008.25 20.25h7.5A2.25 2.25 0 0018 18V6.75h.75a.75.75 0 000-1.5H5.25zm2.25 1.5h9V18a.75.75 0 01-.75.75h-7.5a.75.75 0 01-.75-.75V6.75zm2.25-3a.75.75 0 000 1.5h3a.75.75 0 000-1.5h-3z"/></svg>
                 </button>
-                <span class="pl-tr-dur">--:--</span>
+                <span class="pl-tr-dur">${t.duration || '--:--'}</span>
             </div>
         `;
         div.addEventListener('click', () => { playTrack(t); queue = [...pl.tracks.slice(i + 1)]; saveQueue(); renderQueue(); });
@@ -803,3 +817,11 @@ document.getElementById('search-input').addEventListener('keypress', e => { if (
 setBarFill('volume-bar', 100);
 renderQueue();
 renderLibrary();
+
+function parseISO8601Duration(iso) {
+    const m = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+    if (!m) return '--:--';
+    const h = parseInt(m[1] || 0), min = parseInt(m[2] || 0), sec = parseInt(m[3] || 0);
+    const total = h * 3600 + min * 60 + sec;
+    return fmtTime(total);
+}
