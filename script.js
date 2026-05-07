@@ -1,14 +1,17 @@
 // --- CONFIGURATION FIREBASE ---
-// (Garde tes propres clés ici)
-const firebaseConfig = { ... }; 
-firebase.initializeApp(firebaseConfig);
+const firebaseConfig = { 
+    // Colle tes clés ici
+}; 
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
 const auth = firebase.auth();
 const db = firebase.firestore();
 
 // --- VARIABLES GLOBALES ---
 let currentUser = null;
-let currentPlaylistId = null;
-let queue = [];
+let pendingTrack = null; // Pour stocker la musique en attente d'ajout
+let toastTimer;
 
 // --- FONCTION DE RÉPARATION : ESCAPE HTML ---
 function escHtml(str) {
@@ -19,20 +22,34 @@ function escHtml(str) {
 
 // --- GESTION DE L'AUTH ---
 auth.onAuthStateChanged(user => {
+    const authOverlay = document.getElementById('auth-overlay');
     if (user) {
         currentUser = user;
-        document.getElementById('auth-overlay').style.display = 'none';
-        loadPlaylists(); // Charger les playlists dès la connexion
+        if(authOverlay) authOverlay.style.display = 'none';
+        document.getElementById('user-avatar').innerText = user.email[0].toUpperCase();
+        document.getElementById('user-email-display').innerText = user.email;
+        loadPlaylists();
     } else {
-        document.getElementById('auth-overlay').style.display = 'flex';
+        if(authOverlay) authOverlay.style.display = 'flex';
     }
 });
 
-// --- GESTION DES PLAYLISTS (CRUD) ---
+// --- GESTION DES NOTIFICATIONS (TOAST) ---
+function showToast(message) {
+    const toast = document.getElementById('toast');
+    clearTimeout(toastTimer);
+    toast.innerText = message;
+    toast.classList.add('show');
+    
+    toastTimer = setTimeout(() => {
+        toast.classList.remove('show');
+    }, 3000);
+}
+
+// --- GESTION DES PLAYLISTS ---
 async function createPlaylist() {
     const name = prompt("Nom de la playlist :");
     if (!name) return;
-
     await db.collection('users').doc(currentUser.uid).collection('playlists').add({
         name: name,
         tracks: [],
@@ -43,7 +60,7 @@ async function createPlaylist() {
 
 async function loadPlaylists() {
     const snapshot = await db.collection('users').doc(currentUser.uid).collection('playlists').get();
-    const container = document.getElementById('library-content'); // Correspond au CSS
+    const container = document.getElementById('library-content');
     container.innerHTML = '';
 
     snapshot.forEach(doc => {
@@ -53,56 +70,76 @@ async function loadPlaylists() {
                 <div class="sidebar-pl-thumb"><i class="fas fa-music"></i></div>
                 <div class="sidebar-pl-info">
                     <span class="sidebar-pl-name">${escHtml(pl.name)}</span>
-                    <span class="sidebar-pl-count">${pl.tracks.length} titres</span>
+                    <span class="sidebar-pl-count">${pl.tracks ? pl.tracks.length : 0} titres</span>
                 </div>
-                <button class="sidebar-pl-btn danger" onclick="deletePlaylist(event, '${doc.id}')">
-                    <i class="fas fa-trash"></i>
-                </button>
             </div>`;
     });
 }
 
-async function deletePlaylist(e, id) {
-    e.stopPropagation();
-    if(confirm("Supprimer cette playlist ?")) {
-        await db.collection('users').doc(currentUser.uid).collection('playlists').doc(id).delete();
-        loadPlaylists();
-    }
-}
+// --- LOGIQUE D'AJOUT AVEC MENU FLOTTANT ---
+window.addToPlaylistMenu = async function(trackId, title, artist, thumb, event) {
+    if(event) event.stopPropagation();
+    pendingTrack = { id: trackId, title, artist, thumb };
 
-// --- AJOUTER UNE MUSIQUE À UNE PLAYLIST ---
-window.addToPlaylist = async function(trackId, title, artist, thumb) {
-    // 1. Demander à l'utilisateur vers quelle playlist
     const snapshot = await db.collection('users').doc(currentUser.uid).collection('playlists').get();
+    const modal = document.getElementById('playlist-modal');
+    const container = document.getElementById('playlist-options');
+    
+    container.innerHTML = '';
+
     if (snapshot.empty) {
-        alert("Créez d'abord une playlist !");
+        showToast("Créez une playlist d'abord !");
         return;
     }
 
-    // Pour simplifier, on prend la première ou on pourrait ouvrir un menu
-    const firstPl = snapshot.docs[0];
-    const tracks = firstPl.data().tracks || [];
-    
-    tracks.push({ id: trackId, title, artist, thumb });
-    
-    await db.collection('users').doc(currentUser.uid).collection('playlists').doc(firstPl.id).update({
-        tracks: tracks
+    snapshot.forEach(doc => {
+        const p = doc.data();
+        const btn = document.createElement('button');
+        btn.className = 'playlist-option-item';
+        btn.innerHTML = `<i class="fas fa-plus"></i> ${escHtml(p.name)}`;
+        btn.onclick = () => saveToSpecificPlaylist(doc.id, p.name);
+        container.appendChild(btn);
     });
-    alert("Ajouté à " + firstPl.data().name);
-    loadPlaylists();
+
+    // Positionnement du menu près du clic
+    modal.style.display = 'block';
+    modal.style.left = (event.clientX - 230) + "px";
+    modal.style.top = (event.clientY) + "px";
+};
+
+async function saveToSpecificPlaylist(playlistId, playlistName) {
+    if (!pendingTrack) return;
+    const plRef = db.collection('users').doc(currentUser.uid).collection('playlists').doc(playlistId);
+    
+    try {
+        const doc = await plRef.get();
+        const tracks = doc.data().tracks || [];
+        tracks.push(pendingTrack);
+        await plRef.update({ tracks: tracks });
+        
+        closePlaylistModal();
+        showToast(`Ajouté à ${playlistName}`);
+        loadPlaylists();
+    } catch (e) {
+        showToast("Erreur d'ajout");
+    }
+}
+
+window.closePlaylistModal = function() {
+    document.getElementById('playlist-modal').style.display = 'none';
+    pendingTrack = null;
 };
 
 // --- RECHERCHE ---
-async function searchMusic() {
+window.searchMusic = async function() {
     const query = document.getElementById('search-input').value;
     if(!query) return;
     
     const API_KEY = 'VOTRE_CLE_YOUTUBE';
-    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${query}&type=video&maxResults=10&key=${API_KEY}`;
+    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${query}&type=video&maxResults=12&key=${API_KEY}`;
     
     const res = await fetch(url);
     const data = await res.json();
-    
     const grid = document.getElementById('music-grid');
     grid.innerHTML = '';
     
@@ -115,7 +152,7 @@ async function searchMusic() {
                     <button class="card-play-btn" onclick="playTrack('${item.id.videoId}', '${escHtml(t.title)}')">
                         <i class="fas fa-play"></i>
                     </button>
-                    <button class="btn-add-playlist" onclick="addToPlaylist('${item.id.videoId}', '${escHtml(t.title)}', '${escHtml(t.channelTitle)}', '${t.thumbnails.default.url}')">
+                    <button class="btn-add-playlist" onclick="addToPlaylistMenu('${item.id.videoId}', '${escHtml(t.title)}', '${escHtml(t.channelTitle)}', '${t.thumbnails.default.url}', event)">
                         <i class="fas fa-plus"></i>
                     </button>
                 </div>
@@ -123,4 +160,11 @@ async function searchMusic() {
                 <p>${escHtml(t.channelTitle)}</p>
             </div>`;
     });
-}
+};
+
+// Fermer le menu si on clique ailleurs
+window.onclick = function(event) {
+    if (!event.target.closest('.playlist-popup') && !event.target.closest('.btn-add-playlist')) {
+        closePlaylistModal();
+    }
+};
