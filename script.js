@@ -921,7 +921,7 @@ document.getElementById('search-input').addEventListener('keypress', e => {
 });
 
 document.getElementById('search-input').addEventListener('input', function () {
-    document.getElementById('search-clear').style.display = this.value ? 'flex' : 'none';
+    document.getElementById('search-clear').style.display = this.value ? 'inline-flex' : 'none';
 });
 
 function clearSearch() {
