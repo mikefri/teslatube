@@ -215,3 +215,59 @@ input[type="range"] {
     width: 100%; height: 4px; border-radius: 2px;
     accent-color: var(--green); cursor: pointer; 
 }
+/* Le menu qui apparaît par-dessus */
+.playlist-popup {
+    position: fixed; /* Il suit l'écran */
+    z-index: 2000;
+    background: rgba(40, 40, 40, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    width: 220px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    overflow: hidden;
+}
+
+.popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    font-size: 0.8rem;
+    font-weight: bold;
+    color: var(--text-sub);
+}
+
+.popup-header button {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+}
+
+.popup-body {
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 5px;
+}
+
+/* Style des lignes de playlist dans le menu */
+.playlist-option-item {
+    width: 100%;
+    padding: 10px;
+    background: none;
+    border: none;
+    color: white;
+    text-align: left;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    transition: 0.2s;
+}
+
+.playlist-option-item:hover {
+    background: var(--green);
+    color: black;
+}
