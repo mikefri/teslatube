@@ -143,35 +143,42 @@ async function loadPlaylists() {
 
 let pendingTrack = null; // Stocke temporairement la chanson à ajouter
 
-async function addToPlaylistMenu(id, title, artist, thumb) {
-    // 1. On garde les infos de la chanson en mémoire
+async function addToPlaylistMenu(id, title, artist, thumb, event) {
+    // Empêche de lancer la musique en cliquant sur le +
+    if(event) event.stopPropagation();
+
     pendingTrack = { id, title, artist, thumb };
 
-    // 2. On récupère les playlists de l'utilisateur
     const snap = await db.collection('users').doc(currentUser.uid).collection('playlists').get();
     const modal = document.getElementById('playlist-modal');
     const container = document.getElementById('playlist-options');
     
-    container.innerHTML = ''; // On vide le menu précédent
+    container.innerHTML = '';
 
     if(snap.empty) {
-        alert("Vous n'avez pas de playlist. Créez-en une d'abord !");
+        alert("Créez une playlist d'abord !");
         return;
     }
 
-    // 3. On crée un bouton pour chaque playlist
     snap.forEach(doc => {
         const p = doc.data();
         const btn = document.createElement('button');
-        btn.className = 'user-dropdown-item'; // On réutilise le style du menu utilisateur
-        btn.style.width = "100%";
-        btn.innerHTML = `<i class="fas fa-plus-circle"></i> ${escHtml(p.name)}`;
+        btn.className = 'playlist-option-item';
+        btn.innerHTML = `<i class="fas fa-list-ul"></i> ${escHtml(p.name)}`;
         btn.onclick = () => saveToSpecificPlaylist(doc.id, p.name);
         container.appendChild(btn);
     });
 
-    // 4. On affiche la fenêtre
-    modal.style.display = 'flex';
+    // POSITIONNEMENT DYNAMIQUE
+    modal.style.display = 'block';
+    
+    // On place le menu près du curseur de la souris
+    const mouseX = event.clientX;
+    const mouseY = event.clientY;
+    
+    // Ajustement pour ne pas sortir de l'écran
+    modal.style.left = (mouseX - 230) + "px"; 
+    modal.style.top = (mouseY) + "px";
 }
 
 async function saveToSpecificPlaylist(playlistId, playlistName) {
