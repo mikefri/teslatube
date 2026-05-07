@@ -161,3 +161,21 @@ function escHtml(s) {
     return t.innerHTML; 
 }
 function logout() { auth.signOut(); location.reload(); }
+
+function toggleUserMenu() {
+    const menu = document.getElementById('user-menu');
+    menu.classList.toggle('show');
+}
+
+// Fermer le menu si on clique ailleurs sur l'écran
+window.onclick = function(event) {
+    if (!event.target.matches('.user-btn') && !event.target.matches('.user-avatar')) {
+        const dropdowns = document.getElementsByClassName("user-dropdown");
+        for (let i = 0; i < dropdowns.length; i++) {
+            let openDropdown = dropdowns[i];
+            if (openDropdown.classList.contains('show')) {
+                openDropdown.classList.remove('show');
+            }
+        }
+    }
+}
