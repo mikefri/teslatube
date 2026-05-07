@@ -1,11 +1,12 @@
 // --- CONFIGURATION ---
 const firebaseConfig = {
-    apiKey: "TON_API_KEY",
-    authDomain: "TON_PROJET.firebaseapp.com",
-    projectId: "TON_PROJET",
-    storageBucket: "TON_PROJET.appspot.com",
-    messagingSenderId: "...",
-    appId: "..."
+  apiKey: "AIzaSyANf8hNGIRryPmZytIxIQ4uDhY6fR6uDKM",
+  authDomain: "teslatube-560c0.firebaseapp.com",
+  projectId: "teslatube-560c0",
+  storageBucket: "teslatube-560c0.firebasestorage.app",
+  messagingSenderId: "1019331471126",
+  appId: "1:1019331471126:web:29beb2914436836bd41237",
+  measurementId: "G-K05WJMWGGH"
 };
 const YOUTUBE_API_KEY = "TA_CLE_YOUTUBE";
 
