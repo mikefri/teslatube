@@ -1,17 +1,26 @@
-const API_KEY = 'AIzaSyBX9_dZTK6PHaCI9_kOnT4jguY0u64o-54';
+import {
+    auth, db,
+    loginUser, registerUser, logoutUser,
+    savePlaylistRemote, loadPlaylistRemote,
+    onAuthStateChanged
+} from "./firebase.js";
 
+/* ═══════════════════════════════════════
+   STATE
+═══════════════════════════════════════ */
 let player;
-let playlist    = JSON.parse(localStorage.getItem('mySpotubePlaylist')) || [];
-let historyStack = [];
+let playlist      = [];
+let historyStack  = [];
 let progressInterval;
-let isPlaying   = false;
-let isMuted     = false;
-let lastVolume  = 100;
-let queueVisible = true;
-let currentTrack = null;
+let isPlaying     = false;
+let isMuted       = false;
+let lastVolume    = 100;
+let queueVisible  = true;
+let currentTrack  = null;
+let currentUser   = null;
 
 /* ─── YouTube IFrame API ─── */
-function onYouTubeIframeAPIReady() {
+window.onYouTubeIframeAPIReady = function () {
     player = new YT.Player('player', {
         height: '0', width: '0', videoId: '',
         playerVars: { 'playsinline': 1 },
@@ -20,11 +29,145 @@ function onYouTubeIframeAPIReady() {
             'onStateChange': onPlayerStateChange
         }
     });
+};
+
+/* ═══════════════════════════════════════
+   AUTH — state listener
+═══════════════════════════════════════ */
+onAuthStateChanged(auth, async (user) => {
+    if (user) {
+        currentUser = user;
+        showApp();
+        updateUserAvatar(user.email);
+        try {
+            playlist = await loadPlaylistRemote(user.uid);
+        } catch {
+            playlist = JSON.parse(localStorage.getItem('mySpotubePlaylist')) || [];
+        }
+        renderPlaylist();
+    } else {
+        currentUser = null;
+        showAuthModal();
+    }
+});
+
+/* ═══════════════════════════════════════
+   AUTH — UI helpers
+═══════════════════════════════════════ */
+function showApp() {
+    document.getElementById('auth-overlay').style.display = 'none';
+    document.getElementById('app').style.display = 'grid';
+}
+
+function showAuthModal() {
+    document.getElementById('auth-overlay').style.display = 'flex';
+    document.getElementById('app').style.display = 'none';
+}
+
+function updateUserAvatar(email) {
+    const initial = (email || 'U')[0].toUpperCase();
+    document.getElementById('user-initial').textContent = initial;
+}
+
+/* ═══════════════════════════════════════
+   AUTH — tab toggle (login ↔ register)
+═══════════════════════════════════════ */
+document.getElementById('tab-login').addEventListener('click', () => switchTab('login'));
+document.getElementById('tab-register').addEventListener('click', () => switchTab('register'));
+
+function switchTab(tab) {
+    const isLogin = tab === 'login';
+    document.getElementById('tab-login').classList.toggle('auth-tab-active', isLogin);
+    document.getElementById('tab-register').classList.toggle('auth-tab-active', !isLogin);
+    document.getElementById('form-login').style.display    = isLogin ? 'flex' : 'none';
+    document.getElementById('form-register').style.display = isLogin ? 'none' : 'flex';
+    document.getElementById('auth-error').textContent = '';
+}
+
+/* ═══════════════════════════════════════
+   AUTH — login form
+═══════════════════════════════════════ */
+document.getElementById('form-login').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email    = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    const btn      = document.getElementById('btn-login');
+    const errEl    = document.getElementById('auth-error');
+    errEl.textContent = '';
+    btn.disabled = true;
+    btn.textContent  = 'Connexion…';
+    try {
+        await loginUser(email, password);
+    } catch (err) {
+        errEl.textContent = friendlyAuthError(err.code);
+        btn.disabled = false;
+        btn.textContent  = 'Se connecter';
+    }
+});
+
+/* ═══════════════════════════════════════
+   AUTH — register form
+═══════════════════════════════════════ */
+document.getElementById('form-register').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email    = document.getElementById('register-email').value.trim();
+    const password = document.getElementById('register-password').value;
+    const confirm  = document.getElementById('register-confirm').value;
+    const btn      = document.getElementById('btn-register');
+    const errEl    = document.getElementById('auth-error');
+    errEl.textContent = '';
+
+    if (password !== confirm) {
+        errEl.textContent = 'Les mots de passe ne correspondent pas.';
+        return;
+    }
+    if (password.length < 6) {
+        errEl.textContent = 'Le mot de passe doit comporter au moins 6 caractères.';
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent  = 'Création…';
+    try {
+        await registerUser(email, password);
+    } catch (err) {
+        errEl.textContent = friendlyAuthError(err.code);
+        btn.disabled = false;
+        btn.textContent  = 'Créer un compte';
+    }
+});
+
+/* ═══════════════════════════════════════
+   AUTH — logout
+═══════════════════════════════════════ */
+document.getElementById('btn-logout').addEventListener('click', async () => {
+    await logoutUser();
+    playlist = [];
+    renderPlaylist();
+});
+
+/* ═══════════════════════════════════════
+   AUTH — error messages FR
+═══════════════════════════════════════ */
+function friendlyAuthError(code) {
+    const map = {
+        'auth/user-not-found':       'Aucun compte trouvé pour cet e-mail.',
+        'auth/wrong-password':       'Mot de passe incorrect.',
+        'auth/email-already-in-use': 'Cet e-mail est déjà utilisé.',
+        'auth/invalid-email':        'Adresse e-mail invalide.',
+        'auth/too-many-requests':    'Trop de tentatives. Réessaie plus tard.',
+        'auth/weak-password':        'Mot de passe trop faible (6 caractères min).',
+        'auth/network-request-failed': 'Erreur réseau. Vérifie ta connexion.',
+        'auth/invalid-credential':   'E-mail ou mot de passe incorrect.',
+    };
+    return map[code] || 'Une erreur est survenue. Réessaie.';
 }
 
 /* ═══════════════════════════════════════
    SEARCH
 ═══════════════════════════════════════ */
+const API_KEY = 'AIzaSyBX9_dZTK6PHaCI9_kOnT4jguY0u64o-54';
+
 async function searchMusic() {
     const query = document.getElementById('search-input').value.trim();
     if (!query) return;
@@ -40,7 +183,7 @@ async function searchMusic() {
         const data = await res.json();
         if (data.error) { container.innerHTML = '<div style="color:#b3b3b3;padding:30px 0;">Clé API expirée ou quota dépassé.</div>'; return; }
         renderResults(data.items || []);
-    } catch (e) {
+    } catch {
         container.innerHTML = '<div style="color:#b3b3b3;padding:30px 0;">Erreur réseau.</div>';
     }
 }
@@ -77,10 +220,9 @@ function renderResults(items) {
             e.stopPropagation();
             addToPlaylist(t);
             const btn = e.currentTarget;
-            const orig = btn.textContent;
             btn.textContent = '✓';
             btn.style.cssText = 'background:var(--green);color:#000;display:flex;';
-            setTimeout(() => { btn.textContent = orig; btn.style.cssText = ''; }, 1500);
+            setTimeout(() => { btn.textContent = '+'; btn.style.cssText = ''; }, 1500);
         });
 
         container.appendChild(div);
@@ -92,30 +234,24 @@ function renderResults(items) {
 ═══════════════════════════════════════ */
 function playTrack(t) {
     if (!player || !player.loadVideoById) return;
-
     if (currentTrack) historyStack.push(currentTrack);
     currentTrack = t;
-
     player.loadVideoById(t.id);
     updatePlayerUI(t);
     setPlayState(true);
-
     clearInterval(progressInterval);
     progressInterval = setInterval(updateProgress, 500);
-
-    document.title = `${t.title} — Spotube`;
+    document.title = `${t.title} — Teslatube`;
 }
 
 function updatePlayerUI(t) {
     document.getElementById('current-track-title').textContent  = t.title;
     document.getElementById('current-track-artist').textContent = t.artist;
-
-    const imgEl    = document.getElementById('current-track-img');
-    const pholder  = document.getElementById('thumb-placeholder');
-
+    const imgEl   = document.getElementById('current-track-img');
+    const pholder = document.getElementById('thumb-placeholder');
     if (t.img) {
-        imgEl.src          = t.img;
-        imgEl.style.display = 'block';
+        imgEl.src = t.img;
+        imgEl.style.display   = 'block';
         pholder.style.display = 'none';
     } else {
         imgEl.style.display   = 'none';
@@ -129,23 +265,23 @@ function setPlayState(playing) {
     document.getElementById('icon-pause').style.display = playing ? 'block' : 'none';
 }
 
-function togglePlay() {
+window.togglePlay = function () {
     if (!player || !player.getPlayerState) return;
     const state = player.getPlayerState();
     if (state === 1) { player.pauseVideo(); setPlayState(false); }
     else             { player.playVideo();  setPlayState(true);  }
-}
+};
 
-function nextTrack() {
+window.nextTrack = function () {
     if (playlist.length > 0) {
         const next = playlist.shift();
         savePlaylist();
         playTrack(next);
         renderPlaylist();
     }
-}
+};
 
-function prevTrack() {
+window.prevTrack = function () {
     if (historyStack.length > 0) {
         const prev = historyStack.pop();
         if (currentTrack) playlist.unshift(currentTrack);
@@ -156,11 +292,11 @@ function prevTrack() {
     } else if (player && player.seekTo) {
         player.seekTo(0, true);
     }
-}
+};
 
 function onPlayerStateChange(event) {
     const S = YT.PlayerState;
-    if (event.data === S.ENDED)   { nextTrack(); }
+    if (event.data === S.ENDED)   { window.nextTrack(); }
     if (event.data === S.PAUSED)  { setPlayState(false); }
     if (event.data === S.PLAYING) { setPlayState(true);  }
 }
@@ -202,7 +338,7 @@ function setVolume(vol) {
     if (player && player.setVolume) player.setVolume(vol);
 }
 
-function toggleMute() {
+window.toggleMute = function () {
     if (isMuted) {
         isMuted = false;
         setVolume(lastVolume || 100);
@@ -212,7 +348,7 @@ function toggleMute() {
         setVolume(0);
     }
     updateVolIcon();
-}
+};
 
 function updateVolIcon() {
     document.getElementById('icon-vol-on').style.display  = isMuted ? 'none'  : 'block';
@@ -220,18 +356,15 @@ function updateVolIcon() {
 }
 
 /* ═══════════════════════════════════════
-   RANGE FILL HELPER (JS-driven gradient)
+   RANGE FILL HELPER
 ═══════════════════════════════════════ */
 function setRangeValue(id, pct, trackColor) {
     const el = document.getElementById(id);
     if (!el) return;
-    const fill = (id === 'volume-bar') ? '#ffffff' : '#ffffff';
-    const hover= (id === 'volume-bar') ? '#1db954' : '#1db954';
-    el.style.background = `linear-gradient(to right, ${fill} ${pct}%, ${trackColor} ${pct}%)`;
+    el.style.background = `linear-gradient(to right, #ffffff ${pct}%, ${trackColor} ${pct}%)`;
     el.dataset.pct = pct;
 }
 
-/* Update progress bar fill color on hover (green) */
 ['progress-bar', 'volume-bar'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -246,8 +379,7 @@ function setRangeValue(id, pct, trackColor) {
     el.addEventListener('input', () => {
         const pct = el.value;
         el.dataset.pct = pct;
-        const isHovered = el.matches(':hover');
-        const color = isHovered ? '#1db954' : '#ffffff';
+        const color = el.matches(':hover') ? '#1db954' : '#ffffff';
         el.style.background = `linear-gradient(to right, ${color} ${pct}%, #535353 ${pct}%)`;
     });
 });
@@ -261,15 +393,20 @@ function addToPlaylist(t) {
     renderPlaylist();
 }
 
-function savePlaylist() {
+async function savePlaylist() {
+    // double sauvegarde : localStorage (fallback hors ligne) + Firestore
     localStorage.setItem('mySpotubePlaylist', JSON.stringify(playlist));
+    if (currentUser) {
+        try { await savePlaylistRemote(currentUser.uid, playlist); }
+        catch (e) { console.warn('Firestore save failed:', e); }
+    }
 }
 
 function renderPlaylist() {
     const container = document.getElementById('playlist-list');
     const countEl   = document.getElementById('playlist-count');
     const n = playlist.length;
-    countEl.textContent = n === 0 ? 'File d\'attente vide'
+    countEl.textContent = n === 0 ? "File d'attente vide"
         : `${n} piste${n > 1 ? 's' : ''} dans la file d'attente`;
 
     container.innerHTML = '';
@@ -289,63 +426,53 @@ function renderPlaylist() {
                 <span class="queue-artist">${escHtml(t.artist)}</span>
             </div>
             <span class="queue-duration">--:--</span>
-            <button class="queue-more-btn" title="Plus d'options">
+            <button class="queue-more-btn" title="Supprimer">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M4.5 13.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm15 0a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm-7.5 0a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"/></svg>
             </button>
         `;
-
         div.addEventListener('click', () => {
             playlist.splice(i, 1);
             savePlaylist();
             playTrack(t);
             renderPlaylist();
         });
-
         div.querySelector('.queue-more-btn').addEventListener('click', e => {
             e.stopPropagation();
             playlist.splice(i, 1);
             savePlaylist();
             renderPlaylist();
         });
-
         container.appendChild(div);
     });
 }
 
-function clearPlaylist() {
+window.clearPlaylist = function () {
     playlist = [];
     savePlaylist();
     renderPlaylist();
-}
+};
 
-function toggleQueue() {
+window.toggleQueue = function () {
     queueVisible = !queueVisible;
     document.getElementById('app').classList.toggle('queue-hidden', !queueVisible);
-    const btn = document.getElementById('btn-queue-toggle');
-    btn.classList.toggle('active', queueVisible);
-}
+    document.getElementById('btn-queue-toggle').classList.toggle('active', queueVisible);
+};
 
 /* ═══════════════════════════════════════
-   SHUFFLE / REPEAT (visual toggle only)
+   SHUFFLE / REPEAT / HEART (visual)
 ═══════════════════════════════════════ */
-document.getElementById('btn-shuffle').addEventListener('click', function () {
-    this.classList.toggle('active');
-});
-document.getElementById('btn-repeat').addEventListener('click', function () {
-    this.classList.toggle('active');
-});
-document.getElementById('btn-heart').addEventListener('click', function () {
-    this.classList.toggle('active');
-});
+document.getElementById('btn-shuffle').addEventListener('click', function () { this.classList.toggle('active'); });
+document.getElementById('btn-repeat').addEventListener('click',  function () { this.classList.toggle('active'); });
+document.getElementById('btn-heart').addEventListener('click',   function () { this.classList.toggle('active'); });
 
 /* ═══════════════════════════════════════
    KEYBOARD SHORTCUTS
 ═══════════════════════════════════════ */
 document.addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT') return;
-    if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
-    if (e.code === 'ArrowRight') { e.preventDefault(); nextTrack(); }
-    if (e.code === 'ArrowLeft')  { e.preventDefault(); prevTrack(); }
+    if (e.code === 'Space')      { e.preventDefault(); window.togglePlay(); }
+    if (e.code === 'ArrowRight') { e.preventDefault(); window.nextTrack(); }
+    if (e.code === 'ArrowLeft')  { e.preventDefault(); window.prevTrack(); }
 });
 
 /* ═══════════════════════════════════════
@@ -365,18 +492,19 @@ function escHtml(str) {
         .replace(/"/g, '&quot;');
 }
 
-function focusSearch() {
+window.focusSearch = function () {
     document.getElementById('search-input').focus();
-}
+};
 
 /* ═══════════════════════════════════════
-   INIT
+   SEARCH EVENTS
 ═══════════════════════════════════════ */
 document.getElementById('search-btn').addEventListener('click', searchMusic);
 document.getElementById('search-input').addEventListener('keypress', e => {
     if (e.key === 'Enter') searchMusic();
 });
 
-// Init volume bar display
+/* ═══════════════════════════════════════
+   INIT
+═══════════════════════════════════════ */
 setRangeValue('volume-bar', 100, '#535353');
-renderPlaylist();
