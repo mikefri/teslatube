@@ -33,6 +33,7 @@
                     <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M10.533 1.279c-5.18 0-9.407 4.226-9.407 9.407 0 5.18 4.226 9.407 9.407 9.407 2.19 0 4.2-.755 5.8-2.02l4.996 4.997a1 1 0 001.414-1.414l-4.994-4.994a9.368 9.368 0 002.191-6.976 9.407 9.407 0 00-9.407-9.407zm-7.407 9.407a7.407 7.407 0 1114.814 0 7.407 7.407 0 01-14.814 0z"/></svg>
                     Rechercher
                 </a>
+                <button onclick="logout()" style="color:#b3b3b3;background:none;border:none;cursor:pointer;font-size:.85rem;">Déconnexion</button>
             </nav>
         </div>
 
@@ -213,5 +214,16 @@
 <div class="toast" id="toast"></div>
 
 <script src="script.js"></script>
+    <div id="auth-modal" style="display:none;position:fixed;inset:0;background:#000c;z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#1a1a1a;border-radius:12px;padding:40px;width:340px;display:flex;flex-direction:column;gap:16px;">
+        <h2 style="color:#fff;margin:0;font-size:1.4rem;">🎵 Teslatube</h2>
+        <p style="color:#b3b3b3;margin:0;font-size:.9rem;">Connectez-vous pour accéder à vos playlists.</p>
+        <input id="auth-email" type="email" placeholder="Email" style="padding:12px;border-radius:6px;border:none;background:#333;color:#fff;font-size:.95rem;">
+        <input id="auth-pass" type="password" placeholder="Mot de passe" style="padding:12px;border-radius:6px;border:none;background:#333;color:#fff;font-size:.95rem;">
+        <p id="auth-error" style="color:#e91429;font-size:.85rem;margin:0;min-height:18px;"></p>
+        <button onclick="login()" style="padding:12px;background:#1db954;border:none;border-radius:24px;color:#000;font-weight:700;font-size:.95rem;cursor:pointer;">Se connecter</button>
+        <button onclick="register()" style="padding:12px;background:transparent;border:1px solid #555;border-radius:24px;color:#fff;font-size:.95rem;cursor:pointer;">Créer un compte</button>
+    </div>
+</div>
 </body>
 </html>
