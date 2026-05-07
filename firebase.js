@@ -48,3 +48,14 @@ export async function logoutUser() {
 }
 
 export { onAuthStateChanged };
+
+/* ── Playlists nommées (Sidebar) ── */
+export async function saveUserPlaylists(uid, namedPlaylists) {
+    // Sauvegarde dans un champ séparé pour ne pas écraser la file d'attente
+    await setDoc(doc(db, "users_config", uid), { namedPlaylists }, { merge: true });
+}
+
+export async function loadUserPlaylists(uid) {
+    const snap = await getDoc(doc(db, "users_config", uid));
+    return snap.exists() ? (snap.data().namedPlaylists || []) : [];
+}
