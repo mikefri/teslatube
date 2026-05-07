@@ -112,6 +112,15 @@ function togglePlay() {
     else ytPlayer.playVideo();
 }
 
+function nextTrack() {
+    if (queueIndex < currentQueue.length - 1) {
+        queueIndex++;
+        const track = currentQueue[queueIndex];
+        updatePlayerUI(track);
+        ytPlayer.loadVideoById(track.id);
+    }
+}
+
 // --- NAVIGATION ---
 function showSection(section) {
     const grid = document.getElementById('music-grid');
@@ -125,7 +134,7 @@ function showSection(section) {
     }
 }
 
-// --- PLAYLISTS (AFFICHAGE & GESTION) ---
+// --- PLAYLISTS (VUE LISTE ÉVOLUÉE) ---
 async function viewPlaylist(playlistId) {
     const doc = await db.collection('users').doc(currentUser.uid).collection('playlists').doc(playlistId).get();
     if (!doc.exists) return;
@@ -134,40 +143,74 @@ async function viewPlaylist(playlistId) {
     const tracks = playlist.tracks || [];
     const grid = document.getElementById('music-grid');
 
+    // On utilise la structure de type "Tableau" avec Bannière
     grid.innerHTML = `
-        <div style="grid-column: 1 / -1; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
-            <div>
-                <h2 style="font-size: 2rem; margin: 0;">${escHtml(playlist.name)}</h2>
-                <p style="color: var(--text-sub);">${tracks.length} titres</p>
+        <div class="playlist-container">
+            <div class="playlist-header">
+                <div class="playlist-cover-large">
+                    ${tracks.length > 0 ? `<img src="${tracks[0].thumb}">` : '<i class="fas fa-music"></i>'}
+                </div>
+                <div class="playlist-header-info">
+                    <span class="playlist-type">PLAYLIST</span>
+                    <h1 class="playlist-title">${escHtml(playlist.name)}</h1>
+                    <div class="playlist-metadata">
+                        <strong>${currentUser.email.split('@')[0]}</strong> • ${tracks.length} titre${tracks.length > 1 ? 's' : ''}
+                    </div>
+                </div>
             </div>
-            <button class="sidebar-pl-btn danger" onclick="deletePlaylist('${doc.id}')">
-                <i class="fas fa-trash"></i> Supprimer la playlist
-            </button>
+
+            <div class="playlist-actions">
+                <button class="play-btn-main" onclick="playPlaylist('${playlistId}')">
+                    <i class="fas fa-play"></i>
+                </button>
+                <button class="btn-delete-pl" onclick="deletePlaylist('${doc.id}')" style="background:none; border:none; color:#b3b3b3; font-size:1.5rem; cursor:pointer;">
+                    <i class="fas fa-ellipsis-h"></i>
+                </button>
+            </div>
+
+            <div class="tracks-table">
+                <div class="table-header">
+                    <div class="col-num">#</div>
+                    <div class="col-title">TITRE</div>
+                    <div class="col-artist">ARTISTE</div>
+                    <div class="col-action"></div>
+                </div>
+                <div class="table-body">
+                    ${tracks.map((track, index) => `
+                        <div class="track-row" onclick="playNow('${track.id}', '${escHtml(track.title)}', '${escHtml(track.artist)}', '${track.thumb}')">
+                            <div class="col-num">${index + 1}</div>
+                            <div class="col-title">
+                                <img src="${track.thumb}" class="row-thumb" style="width:40px; height:40px; margin-right:15px; border-radius:4px;">
+                                <div class="row-info">
+                                    <span class="row-name" style="display:block; color:white;">${escHtml(track.title)}</span>
+                                </div>
+                            </div>
+                            <div class="col-artist">${escHtml(track.artist)}</div>
+                            <div class="col-action">
+                                <button class="row-delete-btn" onclick="removeFromPlaylist('${playlistId}', ${index}, event)" style="background:none; border:none; color:#b3b3b3; cursor:pointer;">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
         </div>
     `;
-
-    if (tracks.length === 0) {
-        grid.innerHTML += `<p style="grid-column: 1 / -1; color: var(--text-sub);">Cette playlist est vide.</p>`;
-        return;
-    }
-
-    tracks.forEach((track, index) => {
-        grid.innerHTML += `
-            <div class="track-card">
-                <div class="card-img-wrap">
-                    <img src="${track.thumb}">
-                    <button class="card-play-btn" onclick="playNow('${track.id}', '${escHtml(track.title)}', '${escHtml(track.artist)}', '${track.thumb}')">
-                        <i class="fas fa-play"></i>
-                    </button>
-                    <button class="btn-add-playlist" onclick="removeFromPlaylist('${playlistId}', ${index}, event)" style="background: rgba(255,0,0,0.6);">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <h4>${escHtml(track.title)}</h4>
-                <p>${escHtml(track.artist)}</p>
-            </div>`;
-    });
 }
+
+// Fonction pour lire toute la playlist d'un coup
+window.playPlaylist = async function(playlistId) {
+    const doc = await db.collection('users').doc(currentUser.uid).collection('playlists').doc(playlistId).get();
+    const tracks = doc.data().tracks || [];
+    if (tracks.length > 0) {
+        currentQueue = tracks;
+        queueIndex = 0;
+        playNow(tracks[0].id, tracks[0].title, tracks[0].artist, tracks[0].thumb);
+    } else {
+        showToast("La playlist est vide");
+    }
+};
 
 async function loadPlaylists() {
     const snap = await db.collection('users').doc(currentUser.uid).collection('playlists').get();
@@ -272,9 +315,13 @@ function escHtml(s) {
 
 function showToast(message) {
     const toast = document.getElementById('toast');
-    toast.innerText = message;
-    toast.classList.add('show');
-    setTimeout(() => { toast.classList.remove('show'); }, 3000);
+    if(toast) {
+        toast.innerText = message;
+        toast.classList.add('show');
+        setTimeout(() => { toast.classList.remove('show'); }, 3000);
+    } else {
+        console.log(message);
+    }
 }
 
 function toggleUserMenu() {
@@ -286,6 +333,6 @@ function logout() { auth.signOut(); location.reload(); }
 window.onclick = function(event) {
     if (!event.target.matches('.user-btn') && !event.target.matches('.user-avatar')) {
         const menu = document.getElementById('user-menu');
-        if (menu.classList.contains('show')) menu.classList.remove('show');
+        if (menu && menu.classList.contains('show')) menu.classList.remove('show');
     }
 }
