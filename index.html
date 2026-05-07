@@ -140,5 +140,17 @@
     <div id="youtube-player" style="display: none;"></div>
     <script src="https://www.youtube.com/iframe_api"></script>
     <script src="app.js"></script>
+    <div id="playlist-modal" class="auth-overlay" style="display:none;">
+    <div class="auth-card" style="width: 320px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 style="font-family: var(--font-display);">Ajouter à...</h3>
+            <button onclick="closePlaylistModal()" style="background:none; border:none; color:white; cursor:pointer;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div id="playlist-options" style="display: flex; flex-direction: column; gap: 10px; max-height: 300px; overflow-y: auto;">
+            </div>
+    </div>
+</div>
 </body>
 </html>
