@@ -97,3 +97,84 @@ input[type="range"] { width: 100%; accent-color: var(--green); }
 /* QUEUE */
 .queue-panel { background: var(--bg-surface); border-radius: var(--radius); overflow-y: auto; }
 .queue-item { display: flex; align-items: center; gap: 10px; padding: 10px; font-size: 0.8rem; }
+
+/* Menu Utilisateur corrigé */
+.topbar-right {
+    position: relative; /* Important pour le positionnement du menu */
+    display: flex;
+    align-items: center;
+}
+
+.user-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+}
+
+.user-avatar {
+    width: 35px;
+    height: 35px;
+    background: #282828;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    border: 2px solid transparent;
+    transition: border-color 0.2s;
+}
+
+.user-btn:hover .user-avatar {
+    border-color: #535353;
+}
+
+.user-dropdown {
+    position: absolute;
+    top: 45px; /* Juste en dessous de l'avatar */
+    right: 0;
+    background: #282828;
+    min-width: 190px;
+    border-radius: 4px;
+    padding: 5px;
+    box-shadow: 0 16px 24px rgba(0,0,0,.3), 0 6px 8px rgba(0,0,0,.2);
+    display: none; /* Caché par défaut, géré par le JS */
+    flex-direction: column;
+    z-index: 1000;
+}
+
+/* Classe à ajouter via JS quand on clique sur l'avatar */
+.user-dropdown.show {
+    display: flex;
+}
+
+.user-dropdown-info {
+    padding: 12px;
+    font-size: 0.85rem;
+    color: white;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    margin-bottom: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.user-dropdown-item {
+    background: transparent;
+    border: none;
+    color: #e0e0e0;
+    padding: 10px 12px;
+    text-align: left;
+    font-size: 0.9rem;
+    cursor: pointer;
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.user-dropdown-item:hover {
+    background: rgba(255,255,255,0.1);
+    color: white;
+}
