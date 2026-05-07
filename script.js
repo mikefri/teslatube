@@ -68,22 +68,51 @@ function parseISO8601Duration(iso) {
 }
 
 /* ═══════════════════════════════════════
-   FIREBASE AUTH — Anonymous sign-in
+   FIREBASE AUTH — Email/Password
 ════════════════════════════════════════ */
 auth.onAuthStateChanged(user => {
     if (user) {
         currentUserId = user.uid;
         startPlaylistListener();
         showSyncIndicator();
+        document.getElementById('auth-modal').style.display = 'none';
     } else {
-        auth.signInAnonymously().catch(err => {
-            console.error('Auth error:', err);
-            // Fallback : localStorage uniquement
-            playlists = JSON.parse(localStorage.getItem('teslatubePlaylists')) || [];
-            renderLibrary();
-        });
+        showAuthModal();
     }
 });
+
+function showAuthModal() {
+    document.getElementById('auth-modal').style.display = 'flex';
+}
+
+async function login() {
+    const email = document.getElementById('auth-email').value.trim();
+    const pass  = document.getElementById('auth-pass').value;
+    const err   = document.getElementById('auth-error');
+    try {
+        await auth.signInWithEmailAndPassword(email, pass);
+    } catch (e) {
+        err.textContent = 'Email ou mot de passe incorrect.';
+    }
+}
+
+async function register() {
+    const email = document.getElementById('auth-email').value.trim();
+    const pass  = document.getElementById('auth-pass').value;
+    const err   = document.getElementById('auth-error');
+    if (pass.length < 6) { err.textContent = 'Mot de passe trop court (6 caractères min).'; return; }
+    try {
+        await auth.createUserWithEmailAndPassword(email, pass);
+    } catch (e) {
+        err.textContent = e.code === 'auth/email-already-in-use'
+            ? 'Email déjà utilisé.'
+            : 'Erreur lors de la création du compte.';
+    }
+}
+
+function logout() {
+    auth.signOut();
+}
 
 /* ═══════════════════════════════════════
    FIRESTORE — Real-time playlist listener
