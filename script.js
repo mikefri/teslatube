@@ -689,6 +689,11 @@ function renderCurrentPlaylistHighlight() {
     });
 }
 
+function setActiveNav(btn) {
+    document.querySelectorAll('.bottom-nav-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+}
+
 function playPlaylist(id) {
     const pl = playlists.find(p => p.id === id);
     if (!pl || pl.tracks.length === 0) return;
