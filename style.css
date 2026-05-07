@@ -271,3 +271,25 @@ input[type="range"] {
     background: var(--green);
     color: black;
 }
+
+/* Style de la petite notification (Toast) */
+#toast {
+    position: fixed;
+    bottom: 110px; /* Juste au-dessus de la barre de lecture */
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: #2e77d0; /* Bleu Spotify ou utilise var(--green) */
+    color: white;
+    padding: 12px 24px;
+    border-radius: 4px;
+    font-weight: 500;
+    font-size: 0.9rem;
+    z-index: 3000;
+    transition: transform 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    pointer-events: none;
+}
+
+#toast.show {
+    transform: translateX(-50%) translateY(0);
+}
