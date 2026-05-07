@@ -1,12 +1,12 @@
 // --- CONFIGURATION ---
 const firebaseConfig = {
-  apiKey: "AIzaSyANf8hNGIRryPmZytIxIQ4uDhY6fR6uDKM",
-  authDomain: "teslatube-560c0.firebaseapp.com",
-  projectId: "teslatube-560c0",
-  storageBucket: "teslatube-560c0.firebasestorage.app",
-  messagingSenderId: "1019331471126",
-  appId: "1:1019331471126:web:29beb2914436836bd41237",
-  measurementId: "G-K05WJMWGGH"
+    apiKey: "AIzaSyANf8hNGIRryPmZytIxIQ4uDhY6fR6uDKM",
+    authDomain: "teslatube-560c0.firebaseapp.com",
+    projectId: "teslatube-560c0",
+    storageBucket: "teslatube-560c0.firebasestorage.app",
+    messagingSenderId: "1019331471126",
+    appId: "1:1019331471126:web:29beb2914436836bd41237",
+    measurementId: "G-K05WJMWGGH"
 };
 const YOUTUBE_API_KEY = "AIzaSyBX9_dZTK6PHaCI9_kOnT4jguY0u64o-54";
 
@@ -19,6 +19,7 @@ let currentUser = null;
 let ytPlayer = null;
 let currentQueue = [];
 let queueIndex = -1;
+let pendingTrack = null; 
 
 // --- AUTHENTICATION ---
 auth.onAuthStateChanged(user => {
@@ -33,12 +34,10 @@ auth.onAuthStateChanged(user => {
     }
 });
 
-// Login / Signup Logic
 document.getElementById('auth-btn').onclick = async () => {
     const email = document.getElementById('auth-email').value;
     const pass = document.getElementById('auth-password').value;
     const isLogin = document.getElementById('tab-login').classList.contains('auth-tab-active');
-
     try {
         if (isLogin) await auth.signInWithEmailAndPassword(email, pass);
         else await auth.createUserWithEmailAndPassword(email, pass);
@@ -72,7 +71,6 @@ async function searchMusic() {
     
     const res = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${q}&type=video&maxResults=15&key=${YOUTUBE_API_KEY}`);
     const data = await res.json();
-    
     const grid = document.getElementById('music-grid');
     grid.innerHTML = '';
     
@@ -114,14 +112,61 @@ function togglePlay() {
     else ytPlayer.playVideo();
 }
 
-// --- PLAYLISTS ---
-async function createPlaylist() {
-    const name = prompt("Nom de la playlist :");
-    if (!name) return;
-    await db.collection('users').doc(currentUser.uid).collection('playlists').add({
-        name, tracks: [], createdAt: firebase.firestore.FieldValue.serverTimestamp()
+// --- NAVIGATION ---
+function showSection(section) {
+    const grid = document.getElementById('music-grid');
+    if(section === 'home' || section === 'search') {
+        grid.innerHTML = `
+            <div class="results-placeholder">
+                <div class="placeholder-icon"><i class="fas fa-music"></i></div>
+                <h2>Recherchez vos titres favoris</h2>
+                <p>Trouvez de la musique parmi des millions de titres YouTube.</p>
+            </div>`;
+    }
+}
+
+// --- PLAYLISTS (AFFICHAGE & GESTION) ---
+async function viewPlaylist(playlistId) {
+    const doc = await db.collection('users').doc(currentUser.uid).collection('playlists').doc(playlistId).get();
+    if (!doc.exists) return;
+
+    const playlist = doc.data();
+    const tracks = playlist.tracks || [];
+    const grid = document.getElementById('music-grid');
+
+    grid.innerHTML = `
+        <div style="grid-column: 1 / -1; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h2 style="font-size: 2rem; margin: 0;">${escHtml(playlist.name)}</h2>
+                <p style="color: var(--text-sub);">${tracks.length} titres</p>
+            </div>
+            <button class="sidebar-pl-btn danger" onclick="deletePlaylist('${doc.id}')">
+                <i class="fas fa-trash"></i> Supprimer la playlist
+            </button>
+        </div>
+    `;
+
+    if (tracks.length === 0) {
+        grid.innerHTML += `<p style="grid-column: 1 / -1; color: var(--text-sub);">Cette playlist est vide.</p>`;
+        return;
+    }
+
+    tracks.forEach((track, index) => {
+        grid.innerHTML += `
+            <div class="track-card">
+                <div class="card-img-wrap">
+                    <img src="${track.thumb}">
+                    <button class="card-play-btn" onclick="playNow('${track.id}', '${escHtml(track.title)}', '${escHtml(track.artist)}', '${track.thumb}')">
+                        <i class="fas fa-play"></i>
+                    </button>
+                    <button class="btn-add-playlist" onclick="removeFromPlaylist('${playlistId}', ${index}, event)" style="background: rgba(255,0,0,0.6);">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <h4>${escHtml(track.title)}</h4>
+                <p>${escHtml(track.artist)}</p>
+            </div>`;
     });
-    loadPlaylists();
 }
 
 async function loadPlaylists() {
@@ -141,22 +186,45 @@ async function loadPlaylists() {
     });
 }
 
-let pendingTrack = null; // Stocke temporairement la chanson à ajouter
+async function createPlaylist() {
+    const name = prompt("Nom de la playlist :");
+    if (!name) return;
+    await db.collection('users').doc(currentUser.uid).collection('playlists').add({
+        name, tracks: [], createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    loadPlaylists();
+}
 
+async function deletePlaylist(id) {
+    if(!confirm("Supprimer définitivement cette playlist ?")) return;
+    await db.collection('users').doc(currentUser.uid).collection('playlists').doc(id).delete();
+    showSection('home');
+    loadPlaylists();
+}
+
+async function removeFromPlaylist(playlistId, trackIndex, event) {
+    event.stopPropagation();
+    const plRef = db.collection('users').doc(currentUser.uid).collection('playlists').doc(playlistId);
+    const doc = await plRef.get();
+    let tracks = doc.data().tracks || [];
+    tracks.splice(trackIndex, 1);
+    await plRef.update({ tracks: tracks });
+    showToast("Titre retiré");
+    viewPlaylist(playlistId);
+    loadPlaylists();
+}
+
+// --- AJOUTER À UNE PLAYLIST (MODAL) ---
 async function addToPlaylistMenu(id, title, artist, thumb, event) {
-    // Empêche de lancer la musique en cliquant sur le +
     if(event) event.stopPropagation();
-
     pendingTrack = { id, title, artist, thumb };
-
     const snap = await db.collection('users').doc(currentUser.uid).collection('playlists').get();
     const modal = document.getElementById('playlist-modal');
     const container = document.getElementById('playlist-options');
-    
     container.innerHTML = '';
 
     if(snap.empty) {
-        alert("Créez une playlist d'abord !");
+        showToast("Créez une playlist d'abord !");
         return;
     }
 
@@ -169,36 +237,24 @@ async function addToPlaylistMenu(id, title, artist, thumb, event) {
         container.appendChild(btn);
     });
 
-    // POSITIONNEMENT DYNAMIQUE
     modal.style.display = 'block';
-    
-    // On place le menu près du curseur de la souris
-    const mouseX = event.clientX;
-    const mouseY = event.clientY;
-    
-    // Ajustement pour ne pas sortir de l'écran
-    modal.style.left = (mouseX - 230) + "px"; 
-    modal.style.top = (mouseY) + "px";
+    modal.style.left = (event.clientX - 230) + "px"; 
+    modal.style.top = (event.clientY) + "px";
 }
 
 async function saveToSpecificPlaylist(playlistId, playlistName) {
     if (!pendingTrack) return;
-
     const plRef = db.collection('users').doc(currentUser.uid).collection('playlists').doc(playlistId);
-    
     try {
         const doc = await plRef.get();
         const tracks = doc.data().tracks || [];
-        
-        // Ajout de la chanson
         tracks.push(pendingTrack);
         await plRef.update({ tracks: tracks });
-        
-        alert(`Ajouté à "${playlistName}" !`);
+        showToast(`Ajouté à ${playlistName}`);
         closePlaylistModal();
-        loadPlaylists(); // Pour mettre à jour le compteur de titres dans la sidebar
+        loadPlaylists(); 
     } catch (error) {
-        console.error("Erreur d'ajout:", error);
+        showToast("Erreur d'ajout");
     }
 }
 
@@ -207,64 +263,29 @@ function closePlaylistModal() {
     pendingTrack = null;
 }
 
-// Utils
+// --- UTILS & UI ---
 function escHtml(s) { 
     let t = document.createElement('div'); 
     t.textContent = s; 
     return t.innerHTML; 
 }
-function logout() { auth.signOut(); location.reload(); }
 
-function toggleUserMenu() {
-    const menu = document.getElementById('user-menu');
-    menu.classList.toggle('show');
-}
-
-// Fermer le menu si on clique ailleurs sur l'écran
-window.onclick = function(event) {
-    if (!event.target.matches('.user-btn') && !event.target.matches('.user-avatar')) {
-        const dropdowns = document.getElementsByClassName("user-dropdown");
-        for (let i = 0; i < dropdowns.length; i++) {
-            let openDropdown = dropdowns[i];
-            if (openDropdown.classList.contains('show')) {
-                openDropdown.classList.remove('show');
-            }
-        }
-    }
-}
-
-// Fonction pour afficher le message discret
 function showToast(message) {
     const toast = document.getElementById('toast');
     toast.innerText = message;
     toast.classList.add('show');
-    
-    // Disparaît après 3 secondes
-    setTimeout(() => {
-        toast.classList.remove('show');
-    }, 3000);
+    setTimeout(() => { toast.classList.remove('show'); }, 3000);
 }
 
-// MODIFICATION de ta fonction existante :
-async function saveToSpecificPlaylist(playlistId, playlistName) {
-    if (!pendingTrack) return;
+function toggleUserMenu() {
+    document.getElementById('user-menu').classList.toggle('show');
+}
 
-    const plRef = db.collection('users').doc(currentUser.uid).collection('playlists').doc(playlistId);
-    
-    try {
-        const doc = await plRef.get();
-        const tracks = doc.data().tracks || [];
-        
-        tracks.push(pendingTrack);
-        await plRef.update({ tracks: tracks });
-        
-        // REMPLACE alert(...) PAR CECI :
-        showToast(`Ajouté à ${playlistName}`);
-        
-        closePlaylistModal();
-        loadPlaylists(); 
-    } catch (error) {
-        console.error("Erreur d'ajout:", error);
-        showToast("Erreur lors de l'ajout");
+function logout() { auth.signOut(); location.reload(); }
+
+window.onclick = function(event) {
+    if (!event.target.matches('.user-btn') && !event.target.matches('.user-avatar')) {
+        const menu = document.getElementById('user-menu');
+        if (menu.classList.contains('show')) menu.classList.remove('show');
     }
 }
