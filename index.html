@@ -228,5 +228,20 @@
         <button onclick="register()" style="padding:12px;background:transparent;border:1px solid #555;border-radius:24px;color:#fff;font-size:.95rem;cursor:pointer;">Créer un compte</button>
     </div>
 </div>
+
+    <nav class="bottom-nav">
+    <button class="bottom-nav-btn active" onclick="showSearch(); setActiveNav(this)">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10.533 1.279c-5.18 0-9.407 4.226-9.407 9.407 0 5.18 4.226 9.407 9.407 9.407 2.19 0 4.2-.755 5.8-2.02l4.996 4.997a1 1 0 001.414-1.414l-4.994-4.994a9.368 9.368 0 002.191-6.976 9.407 9.407 0 00-9.407-9.407zm-7.407 9.407a7.407 7.407 0 1114.814 0 7.407 7.407 0 01-14.814 0z"/></svg>
+        Recherche
+    </button>
+    <button class="bottom-nav-btn" onclick="focusLibrary(); setActiveNav(this)">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 22a1 1 0 01-1-1V3a1 1 0 012 0v18a1 1 0 01-1 1zM15.5 2.134A1 1 0 0015 3v18a1 1 0 001.5.866l5-2.887a1 1 0 000-1.732l-5-11.246a1 1 0 00-.5-.867zM9 2a1 1 0 00-1 1v18a1 1 0 002 0V3a1 1 0 00-1-1z"/></svg>
+        Bibliothèque
+    </button>
+    <button class="bottom-nav-btn" onclick="toggleQueue(); setActiveNav(this)">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15 4a1 1 0 100 2h6a1 1 0 100-2h-6zm0 5a1 1 0 100 2h6a1 1 0 100-2h-6zm0 5a1 1 0 100 2h6a1 1 0 100-2h-6zM3 4a1 1 0 000 2h6a1 1 0 000-2H3z"/></svg>
+        File
+    </button>
+</nav>
 </body>
 </html>
