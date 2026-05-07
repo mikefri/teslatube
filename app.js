@@ -8,7 +8,7 @@ const firebaseConfig = {
   appId: "1:1019331471126:web:29beb2914436836bd41237",
   measurementId: "G-K05WJMWGGH"
 };
-const YOUTUBE_API_KEY = "TA_CLE_YOUTUBE";
+const YOUTUBE_API_KEY = "AIzaSyBX9_dZTK6PHaCI9_kOnT4jguY0u64o-54";
 
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
