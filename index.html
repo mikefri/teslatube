@@ -10,7 +10,56 @@
     <script src="https://www.youtube.com/iframe_api"></script>
 </head>
 <body>
-<div class="app" id="app">
+
+<!-- ═══ AUTH OVERLAY ═══ -->
+<div id="auth-overlay" class="auth-overlay">
+    <div class="auth-card">
+        <div class="auth-logo">
+            <svg viewBox="0 0 24 24" fill="#1DB954" width="40" height="40"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 01-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.623.623 0 01-.277-1.215c3.809-.87 7.076-.496 9.712 1.115a.624.624 0 01.207.857zm1.223-2.722a.78.78 0 01-1.072.257c-2.687-1.652-6.785-2.131-9.965-1.166a.78.78 0 01-.973-.519.781.781 0 01.519-.972c3.632-1.102 8.147-.568 11.234 1.328a.78.78 0 01.257 1.072zm.105-2.835c-3.223-1.914-8.54-2.09-11.618-1.156a.935.935 0 01-.582-1.782c3.532-1.153 9.404-.93 13.115 1.338a.933.933 0 11-.915 1.6z"/></svg>
+            <span class="auth-logo-text">Teslatube</span>
+        </div>
+
+        <div class="auth-tabs">
+            <button id="tab-login" class="auth-tab auth-tab-active">Connexion</button>
+            <button id="tab-register" class="auth-tab">Créer un compte</button>
+        </div>
+
+        <!-- Formulaire connexion -->
+        <form id="form-login" class="auth-form">
+            <label class="auth-label">
+                E-mail
+                <input id="login-email" type="email" class="auth-input" placeholder="ton@email.com" required autocomplete="email">
+            </label>
+            <label class="auth-label">
+                Mot de passe
+                <input id="login-password" type="password" class="auth-input" placeholder="••••••••" required autocomplete="current-password">
+            </label>
+            <p id="auth-error" class="auth-error"></p>
+            <button id="btn-login" type="submit" class="auth-submit-btn">Se connecter</button>
+        </form>
+
+        <!-- Formulaire inscription -->
+        <form id="form-register" class="auth-form" style="display:none">
+            <label class="auth-label">
+                E-mail
+                <input id="register-email" type="email" class="auth-input" placeholder="ton@email.com" required autocomplete="email">
+            </label>
+            <label class="auth-label">
+                Mot de passe
+                <input id="register-password" type="password" class="auth-input" placeholder="Minimum 6 caractères" required autocomplete="new-password">
+            </label>
+            <label class="auth-label">
+                Confirmer le mot de passe
+                <input id="register-confirm" type="password" class="auth-input" placeholder="Confirme ton mot de passe" required autocomplete="new-password">
+            </label>
+            <p id="auth-error" class="auth-error"></p>
+            <button id="btn-register" type="submit" class="auth-submit-btn">Créer un compte</button>
+        </form>
+    </div>
+</div>
+
+<!-- ═══ APP (masqué jusqu'à l'auth) ═══ -->
+<div class="app" id="app" style="display:none">
 
     <!-- ═══ SIDEBAR ═══ -->
     <aside class="sidebar">
@@ -36,7 +85,7 @@
                     <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M3 22a1 1 0 01-1-1V3a1 1 0 012 0v18a1 1 0 01-1 1zM15.5 2.134A1 1 0 0014 3v18a1 1 0 001.5.866l7-4a1 1 0 000-1.732l-7-4zM7 22a1 1 0 01-1-1V3a1 1 0 012 0v18a1 1 0 01-1 1z"/></svg>
                     Bibliothèque
                 </button>
-                <button class="btn-circle-sm" title="Créer" onclick="addToPlaylist&&alert('Créez une playlist depuis les résultats !')">
+                <button class="btn-circle-sm" title="Créer">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M11 11V3h2v8h8v2h-8v8h-2v-8H3v-2z"/></svg>
                 </button>
             </div>
@@ -58,19 +107,25 @@
     <!-- ═══ MAIN CONTENT ═══ -->
     <main class="main-content">
         <div class="topbar">
-            <div class="topbar-nav">
-
-            </div>
+            <div class="topbar-nav"></div>
             <div class="search-wrap">
                 <svg class="search-icon-inp" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M10.533 1.279c-5.18 0-9.407 4.226-9.407 9.407 0 5.18 4.226 9.407 9.407 9.407 2.19 0 4.2-.755 5.8-2.02l4.996 4.997a1 1 0 001.414-1.414l-4.994-4.994a9.368 9.368 0 002.191-6.976 9.407 9.407 0 00-9.407-9.407zm-7.407 9.407a7.407 7.407 0 1114.814 0 7.407 7.407 0 01-14.814 0z"/></svg>
                 <input type="text" id="search-input" placeholder="Que souhaitez-vous écouter ?">
                 <button id="search-btn">Rechercher</button>
             </div>
             <div class="topbar-right">
-
-                <button class="topbar-circle-btn user-btn">
-                    <div class="user-avatar">S</div>
-                </button>
+                <!-- Menu utilisateur -->
+                <div class="user-menu-wrap">
+                    <button class="topbar-circle-btn user-btn" id="btn-user-menu">
+                        <div class="user-avatar" id="user-initial">?</div>
+                    </button>
+                    <div class="user-dropdown" id="user-dropdown">
+                        <button id="btn-logout" class="user-dropdown-item">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M11 5a1 1 0 110-2h8a1 1 0 011 1v14a1 1 0 01-1 1h-8a1 1 0 110-2h7V5h-7zm-4.707 8.707a1 1 0 01-1.414-1.414L6.586 11H1a1 1 0 110-2h5.586L5.293 7.707a1 1 0 011.414-1.414l3 3a1 1 0 010 1.414l-3 3z"/></svg>
+                            Se déconnecter
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -110,7 +165,6 @@
 
     <!-- ═══ PLAYER BAR ═══ -->
     <footer class="player-bar">
-        <!-- LEFT: track info -->
         <div class="player-left">
             <div class="player-thumb" id="player-thumb">
                 <img id="current-track-img" src="" alt="" style="display:none">
@@ -132,7 +186,6 @@
             </div>
         </div>
 
-        <!-- CENTER: controls -->
         <div class="player-center">
             <div class="controls-row">
                 <button class="ctrl-icon ctrl-sm" id="btn-shuffle" title="Lecture aléatoire">
@@ -161,7 +214,6 @@
             </div>
         </div>
 
-        <!-- RIGHT: volume & extras -->
         <div class="player-right">
             <button class="ctrl-icon" id="btn-queue-toggle" onclick="toggleQueue()" title="File d'attente">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M15 4a1 1 0 100 2h6a1 1 0 100-2h-6zm0 5a1 1 0 100 2h6a1 1 0 100-2h-6zm0 5a1 1 0 100 2h6a1 1 0 100-2h-6zM6 4a1 1 0 00-1 1v8.5a2.5 2.5 0 101 0V5a1 1 0 00-1-1zm0 13a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"/></svg>
@@ -185,6 +237,23 @@
     </footer>
 
 </div>
-<script src="script.js"></script>
+
+<script>
+    // Dropdown utilisateur (toggle)
+    document.addEventListener('click', (e) => {
+        const wrap     = document.getElementById('user-menu-wrap') || e.target.closest('.user-menu-wrap');
+        const dropdown = document.getElementById('user-dropdown');
+        const btn      = document.getElementById('btn-user-menu');
+        if (!dropdown) return;
+        if (btn && btn.contains(e.target)) {
+            dropdown.classList.toggle('open');
+        } else if (!dropdown.contains(e.target)) {
+            dropdown.classList.remove('open');
+        }
+    });
+</script>
+
+<script type="module" src="script.js"></script>
 </body>
 </html>
+Terminé
