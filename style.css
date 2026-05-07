@@ -215,16 +215,17 @@ input[type="range"] {
     width: 100%; height: 4px; border-radius: 2px;
     accent-color: var(--green); cursor: pointer; 
 }
-/* Le menu qui apparaît par-dessus */
+
+/* --- PLAYLIST POPUP (Sélection) --- */
 .playlist-popup {
-    position: fixed; /* Il suit l'écran */
+    position: fixed;
     z-index: 2000;
-    background: rgba(40, 40, 40, 0.95);
-    backdrop-filter: blur(10px);
+    background: rgba(40, 40, 40, 0.98);
+    backdrop-filter: blur(15px);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
     width: 220px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.8);
     overflow: hidden;
 }
 
@@ -232,64 +233,48 @@ input[type="range"] {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 12px;
-    background: rgba(255, 255, 255, 0.05);
-    font-size: 0.8rem;
-    font-weight: bold;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
     color: var(--text-sub);
 }
 
 .popup-header button {
-    background: none;
-    border: none;
-    color: white;
-    font-size: 1.2rem;
-    cursor: pointer;
+    background: none; border: none; color: white;
+    font-size: 1.2rem; cursor: pointer; line-height: 1;
 }
 
-.popup-body {
-    max-height: 200px;
-    overflow-y: auto;
-    padding: 5px;
-}
+.popup-body { max-height: 240px; overflow-y: auto; padding: 5px; }
 
-/* Style des lignes de playlist dans le menu */
 .playlist-option-item {
-    width: 100%;
-    padding: 10px;
-    background: none;
-    border: none;
-    color: white;
-    text-align: left;
-    cursor: pointer;
-    border-radius: 4px;
-    font-size: 0.9rem;
-    transition: 0.2s;
+    width: 100%; padding: 10px 12px; background: none; border: none;
+    color: white; text-align: left; cursor: pointer; border-radius: 4px;
+    font-size: 0.9rem; transition: 0.2s; display: flex; align-items: center; gap: 10px;
 }
+.playlist-option-item:hover { background: var(--green); color: black; font-weight: 600; }
 
-.playlist-option-item:hover {
-    background: var(--green);
-    color: black;
-}
-
-/* Style de la petite notification (Toast) */
+/* --- TOAST NOTIFICATION (Corrigé) --- */
 #toast {
     position: fixed;
-    bottom: 110px; /* Juste au-dessus de la barre de lecture */
+    bottom: 110px;
     left: 50%;
-    transform: translateX(-50%) translateY(100px);
-    background: #2e77d0; /* Bleu Spotify ou utilise var(--green) */
+    transform: translateX(-50%) translateY(100px); /* Position de départ (caché) */
+    background: #2e77d0; 
     color: white;
-    padding: 12px 24px;
-    border-radius: 4px;
-    font-weight: 500;
+    padding: 12px 28px;
+    border-radius: 50px;
+    font-weight: 600;
     font-size: 0.9rem;
-    z-index: 3000;
-    transition: transform 0.3s ease;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    z-index: 9999;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
     pointer-events: none;
+    opacity: 0;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 #toast.show {
-    transform: translateX(-50%) translateY(0);
+    transform: translateX(-50%) translateY(0); /* Glisse vers le haut */
+    opacity: 1;
 }
