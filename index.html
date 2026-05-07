@@ -6,15 +6,12 @@
     <title>Gemini Music - Streaming</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Firebase App (le noyau) -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <!-- Firebase Services -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
-    <!-- AUTH OVERLAY -->
     <div id="auth-overlay" class="auth-overlay">
         <div class="auth-bg">
             <div class="auth-orb auth-orb-1"></div>
@@ -52,9 +49,7 @@
         </div>
     </div>
 
-    <!-- MAIN APP STRUCTURE -->
     <div class="app" id="main-app">
-        <!-- SIDEBAR -->
         <aside class="sidebar">
             <div class="sidebar-top">
                 <div class="logo"><i class="fas fa-bolt" style="color:var(--green)"></i> <span>Gemini</span></div>
@@ -68,13 +63,10 @@
                     <button class="nav-item library-btn"><i class="fas fa-book"></i> <span>Bibliothèque</span></button>
                     <button onclick="createPlaylist()" class="btn-circle-sm"><i class="fas fa-plus"></i></button>
                 </div>
-                <div id="library-content" class="library-empty">
-                    <!-- Playlists chargés via JS -->
-                </div>
+                <div id="library-content" class="library-empty"></div>
             </div>
         </aside>
 
-        <!-- MAIN CONTENT -->
         <main class="main-content">
             <header class="topbar">
                 <div class="search-wrap">
@@ -82,6 +74,7 @@
                     <input type="text" id="search-input" placeholder="Que souhaitez-vous écouter ?">
                     <button id="search-btn" onclick="searchMusic()">Rechercher</button>
                 </div>
+
                 <div class="topbar-right">
                     <button class="user-btn" onclick="toggleUserMenu()">
                         <div id="user-avatar" class="user-avatar">?</div>
@@ -95,7 +88,6 @@
 
             <section id="music-section" class="section-content">
                 <div id="music-grid" class="music-grid">
-                    <!-- Résultats de recherche -->
                     <div class="results-placeholder">
                         <div class="placeholder-icon"><i class="fas fa-music"></i></div>
                         <h2>Recherchez vos titres favoris</h2>
@@ -104,25 +96,14 @@
                 </div>
             </section>
 
-            <!-- PLAYLIST VIEW (Hidden by default) -->
-            <section id="playlist-view" class="section-content" style="display:none;">
-                <!-- Rempli dynamiquement -->
-            </section>
+            <section id="playlist-view" class="section-content" style="display:none;"></section>
         </main>
 
-        <!-- QUEUE PANEL -->
         <aside class="queue-panel" id="queue-panel">
-            <div class="queue-header">
-                <div class="queue-tabs">
-                    <button class="queue-tab active">File d'attente</button>
-                </div>
-            </div>
-            <div id="queue-list" class="queue-list">
-                <!-- Titres à venir -->
-            </div>
+            <div class="queue-header">File d'attente</div>
+            <div id="queue-list" class="queue-list"></div>
         </aside>
 
-        <!-- PLAYER BAR -->
         <footer class="player-bar">
             <div class="player-left">
                 <div class="player-thumb">
@@ -135,31 +116,27 @@
             </div>
             <div class="player-center">
                 <div class="controls-row">
-                    <button class="ctrl-icon" id="btn-shuffle"><i class="fas fa-shuffle"></i></button>
+                    <button class="ctrl-icon"><i class="fas fa-shuffle"></i></button>
                     <button class="ctrl-icon" onclick="prevTrack()"><i class="fas fa-backward-step"></i></button>
                     <button class="btn-play-circle" onclick="togglePlay()"><i id="play-icon" class="fas fa-play"></i></button>
                     <button class="ctrl-icon" onclick="nextTrack()"><i class="fas fa-forward-step"></i></button>
-                    <button class="ctrl-icon" id="btn-repeat"><i class="fas fa-repeat"></i></button>
+                    <button class="ctrl-icon"><i class="fas fa-repeat"></i></button>
                 </div>
                 <div class="progress-row">
-                    <span class="time-display" id="time-current">0:00</span>
+                    <span id="time-current">0:00</span>
                     <div class="slider-container">
                         <input type="range" id="progress-bar" value="0" min="0" max="100">
                     </div>
-                    <span class="time-display" id="time-total">0:00</span>
+                    <span id="time-total">0:00</span>
                 </div>
             </div>
             <div class="player-right">
-                <button class="ctrl-icon" onclick="toggleQueue()"><i class="fas fa-list"></i></button>
-                <div class="volume-bar">
-                    <i class="fas fa-volume-high" style="margin-right:8px; font-size: 0.8rem;"></i>
-                    <input type="range" id="volume-control" value="50" min="0" max="100">
-                </div>
+                <button class="ctrl-icon"><i class="fas fa-list"></i></button>
+                <input type="range" id="volume-control" value="50" min="0" max="100" style="width: 80px; margin-left: 10px;">
             </div>
         </footer>
     </div>
 
-    <!-- YouTube IFrame API -->
     <div id="youtube-player" style="display: none;"></div>
     <script src="https://www.youtube.com/iframe_api"></script>
     <script src="app.js"></script>
