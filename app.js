@@ -232,3 +232,39 @@ window.onclick = function(event) {
         }
     }
 }
+
+// Fonction pour afficher le message discret
+function showToast(message) {
+    const toast = document.getElementById('toast');
+    toast.innerText = message;
+    toast.classList.add('show');
+    
+    // Disparaît après 3 secondes
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 3000);
+}
+
+// MODIFICATION de ta fonction existante :
+async function saveToSpecificPlaylist(playlistId, playlistName) {
+    if (!pendingTrack) return;
+
+    const plRef = db.collection('users').doc(currentUser.uid).collection('playlists').doc(playlistId);
+    
+    try {
+        const doc = await plRef.get();
+        const tracks = doc.data().tracks || [];
+        
+        tracks.push(pendingTrack);
+        await plRef.update({ tracks: tracks });
+        
+        // REMPLACE alert(...) PAR CECI :
+        showToast(`Ajouté à ${playlistName}`);
+        
+        closePlaylistModal();
+        loadPlaylists(); 
+    } catch (error) {
+        console.error("Erreur d'ajout:", error);
+        showToast("Erreur lors de l'ajout");
+    }
+}
