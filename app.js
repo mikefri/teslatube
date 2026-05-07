@@ -85,7 +85,7 @@ async function searchMusic() {
                     <button class="card-play-btn" onclick="playNow('${item.id.videoId}', '${escHtml(t.title)}', '${escHtml(t.channelTitle)}', '${t.thumbnails.default.url}')">
                         <i class="fas fa-play"></i>
                     </button>
-                    <button class="btn-add-playlist" onclick="addToPlaylistMenu('${item.id.videoId}', '${escHtml(t.title)}', '${escHtml(t.channelTitle)}', '${t.thumbnails.default.url}')">
+                    <button class="btn-add-playlist" onclick="addToPlaylistMenu('${item.id.videoId}', '${escHtml(t.title)}', '${escHtml(t.channelTitle)}', '${t.thumbnails.default.url}', event)">
                         <i class="fas fa-plus"></i>
                     </button>
                 </div>
