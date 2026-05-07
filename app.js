@@ -141,17 +141,63 @@ async function loadPlaylists() {
     });
 }
 
+let pendingTrack = null; // Stocke temporairement la chanson à ajouter
+
 async function addToPlaylistMenu(id, title, artist, thumb) {
+    // 1. On garde les infos de la chanson en mémoire
+    pendingTrack = { id, title, artist, thumb };
+
+    // 2. On récupère les playlists de l'utilisateur
     const snap = await db.collection('users').doc(currentUser.uid).collection('playlists').get();
-    if(snap.empty) return createPlaylist();
+    const modal = document.getElementById('playlist-modal');
+    const container = document.getElementById('playlist-options');
     
-    // Pour simplifier : ajoute à la première playlist trouvée
-    const plDoc = snap.docs[0];
-    const tracks = plDoc.data().tracks || [];
-    tracks.push({id, title, artist, thumb});
-    await plDoc.ref.update({ tracks });
-    alert("Ajouté à " + plDoc.data().name);
-    loadPlaylists();
+    container.innerHTML = ''; // On vide le menu précédent
+
+    if(snap.empty) {
+        alert("Vous n'avez pas de playlist. Créez-en une d'abord !");
+        return;
+    }
+
+    // 3. On crée un bouton pour chaque playlist
+    snap.forEach(doc => {
+        const p = doc.data();
+        const btn = document.createElement('button');
+        btn.className = 'user-dropdown-item'; // On réutilise le style du menu utilisateur
+        btn.style.width = "100%";
+        btn.innerHTML = `<i class="fas fa-plus-circle"></i> ${escHtml(p.name)}`;
+        btn.onclick = () => saveToSpecificPlaylist(doc.id, p.name);
+        container.appendChild(btn);
+    });
+
+    // 4. On affiche la fenêtre
+    modal.style.display = 'flex';
+}
+
+async function saveToSpecificPlaylist(playlistId, playlistName) {
+    if (!pendingTrack) return;
+
+    const plRef = db.collection('users').doc(currentUser.uid).collection('playlists').doc(playlistId);
+    
+    try {
+        const doc = await plRef.get();
+        const tracks = doc.data().tracks || [];
+        
+        // Ajout de la chanson
+        tracks.push(pendingTrack);
+        await plRef.update({ tracks: tracks });
+        
+        alert(`Ajouté à "${playlistName}" !`);
+        closePlaylistModal();
+        loadPlaylists(); // Pour mettre à jour le compteur de titres dans la sidebar
+    } catch (error) {
+        console.error("Erreur d'ajout:", error);
+    }
+}
+
+function closePlaylistModal() {
+    document.getElementById('playlist-modal').style.display = 'none';
+    pendingTrack = null;
 }
 
 // Utils
