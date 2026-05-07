@@ -920,6 +920,19 @@ document.getElementById('search-input').addEventListener('keypress', e => {
     if (e.key === 'Enter') searchMusic();
 });
 
+document.getElementById('search-input').addEventListener('input', function () {
+    document.getElementById('search-clear').style.display = this.value ? 'flex' : 'none';
+});
+
+function clearSearch() {
+    const input = document.getElementById('search-input');
+    input.value = '';
+    input.focus();
+    document.getElementById('search-clear').style.display = 'none';
+    document.getElementById('results').innerHTML = '';
+    document.getElementById('results-placeholder').style.display = 'block';
+}
+
 setBarFill('volume-bar', 100);
 renderQueue();
 // renderLibrary() sera appelé par le listener Firestore une fois connecté
