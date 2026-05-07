@@ -134,7 +134,6 @@ function showSection(section) {
     }
 }
 
-// --- PLAYLISTS (VUE LISTE ÉVOLUÉE) ---
 async function viewPlaylist(playlistId) {
     const doc = await db.collection('users').doc(currentUser.uid).collection('playlists').doc(playlistId).get();
     if (!doc.exists) return;
@@ -143,12 +142,11 @@ async function viewPlaylist(playlistId) {
     const tracks = playlist.tracks || [];
     const grid = document.getElementById('music-grid');
 
-    // On utilise la structure de type "Tableau" avec Bannière
     grid.innerHTML = `
         <div class="playlist-container">
             <div class="playlist-header">
                 <div class="playlist-cover-large">
-                    ${tracks.length > 0 ? `<img src="${tracks[0].thumb}">` : '<i class="fas fa-music"></i>'}
+                    ${tracks.length > 0 ? `<img src="${tracks[0].thumb}">` : '<div style="width:100%; height:100%; background:#282828; display:flex; align-items:center; justify-content:center; font-size:4rem;"><i class="fas fa-music"></i></div>'}
                 </div>
                 <div class="playlist-header-info">
                     <span class="playlist-type">PLAYLIST</span>
@@ -159,11 +157,11 @@ async function viewPlaylist(playlistId) {
                 </div>
             </div>
 
-            <div class="playlist-actions">
+            <div class="playlist-actions" style="padding: 24px 32px;">
                 <button class="play-btn-main" onclick="playPlaylist('${playlistId}')">
                     <i class="fas fa-play"></i>
                 </button>
-                <button class="btn-delete-pl" onclick="deletePlaylist('${doc.id}')" style="background:none; border:none; color:#b3b3b3; font-size:1.5rem; cursor:pointer;">
+                <button class="btn-delete-pl" onclick="deletePlaylist('${doc.id}')" style="background:none; border:none; color:#b3b3b3; font-size:2rem; cursor:pointer; margin-left:20px;">
                     <i class="fas fa-ellipsis-h"></i>
                 </button>
             </div>
@@ -180,14 +178,12 @@ async function viewPlaylist(playlistId) {
                         <div class="track-row" onclick="playNow('${track.id}', '${escHtml(track.title)}', '${escHtml(track.artist)}', '${track.thumb}')">
                             <div class="col-num">${index + 1}</div>
                             <div class="col-title">
-                                <img src="${track.thumb}" class="row-thumb" style="width:40px; height:40px; margin-right:15px; border-radius:4px;">
-                                <div class="row-info">
-                                    <span class="row-name" style="display:block; color:white;">${escHtml(track.title)}</span>
-                                </div>
+                                <img src="${track.thumb}" class="row-thumb">
+                                <span class="row-name">${escHtml(track.title)}</span>
                             </div>
                             <div class="col-artist">${escHtml(track.artist)}</div>
                             <div class="col-action">
-                                <button class="row-delete-btn" onclick="removeFromPlaylist('${playlistId}', ${index}, event)" style="background:none; border:none; color:#b3b3b3; cursor:pointer;">
+                                <button class="row-delete-btn" onclick="removeFromPlaylist('${playlistId}', ${index}, event)">
                                     <i class="fas fa-times"></i>
                                 </button>
                             </div>
