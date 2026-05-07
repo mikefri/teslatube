@@ -23,23 +23,49 @@ const db   = firebase.firestore();
 
 // ── State ──
 let player;
-let queue          = JSON.parse(localStorage.getItem('teslatubeQueue')) || [];
-let playlists      = [];
-let historyStack   = [];
+let queue             = JSON.parse(localStorage.getItem('teslatubeQueue')) || [];
+let playlists         = [];
+let historyStack      = [];
 let progressInterval;
-let isPlaying      = false;
-let isMuted        = false;
-let lastVolume     = 100;
-let queueVisible   = true;
-let currentTrack   = null;
-let currentSection = 'search';   // 'search' | 'playlist:<id>'
-let modalMode      = null;        // { action: 'create'|'rename', playlistId? }
+let isPlaying         = false;
+let isMuted           = false;
+let lastVolume        = 100;
+let queueVisible      = true;
+let currentTrack      = null;
+let currentSection    = 'search';   // 'search' | 'playlist:<id>'
+let modalMode         = null;       // { action: 'create'|'rename', playlistId? }
 let openDropdownTrack = null;
-let currentUserId  = null;
-let unsubscribePlaylists = null;  // Firestore real-time listener cleanup
+let currentUserId     = null;
+let unsubscribePlaylists = null;    // Firestore real-time listener cleanup
 
 // ── Palette ──
 const COLORS = ['#e91429','#503750','#0d73ec','#148a08','#e8115b','#27856a','#8d67ab','#1e3264','#f59b23','#0e6251'];
+
+/* ═══════════════════════════════════════
+   UTILS  (déclarées en premier pour être
+   disponibles partout dans le fichier)
+════════════════════════════════════════ */
+function fmtTime(sec) {
+    const m = Math.floor(sec / 60), s = Math.floor(sec % 60);
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+}
+
+function esc(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function parseISO8601Duration(iso) {
+    const m = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+    if (!m) return '--:--';
+    const h   = parseInt(m[1] || 0);
+    const min = parseInt(m[2] || 0);
+    const sec = parseInt(m[3] || 0);
+    return fmtTime(h * 3600 + min * 60 + sec);
+}
 
 /* ═══════════════════════════════════════
    FIREBASE AUTH — Anonymous sign-in
@@ -50,10 +76,9 @@ auth.onAuthStateChanged(user => {
         startPlaylistListener();
         showSyncIndicator();
     } else {
-        // Sign in anonymously so each browser session has its own user
         auth.signInAnonymously().catch(err => {
             console.error('Auth error:', err);
-            // Fallback: use localStorage only
+            // Fallback : localStorage uniquement
             playlists = JSON.parse(localStorage.getItem('teslatubePlaylists')) || [];
             renderLibrary();
         });
@@ -66,13 +91,13 @@ auth.onAuthStateChanged(user => {
 function startPlaylistListener() {
     if (unsubscribePlaylists) unsubscribePlaylists();
 
-    const ref = db.collection('users').doc(currentUserId).collection('playlists')
+    const ref = db.collection('users').doc(currentUserId)
+                  .collection('playlists')
                   .orderBy('createdAt', 'asc');
 
     unsubscribePlaylists = ref.onSnapshot(snapshot => {
         playlists = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderLibrary();
-        // Refresh playlist view if currently open
         if (currentSection.startsWith('playlist:')) {
             const id = currentSection.split(':')[1];
             if (playlists.find(p => p.id === id)) renderPlaylistView(id);
@@ -84,7 +109,6 @@ function startPlaylistListener() {
     });
 }
 
-// ── Write a single playlist doc to Firestore ──
 async function savePlaylistToFirestore(pl) {
     if (!currentUserId) return;
     try {
@@ -102,7 +126,6 @@ async function savePlaylistToFirestore(pl) {
     }
 }
 
-// ── Delete a playlist doc from Firestore ──
 async function deletePlaylistFromFirestore(id) {
     if (!currentUserId) return;
     try {
@@ -116,7 +139,10 @@ async function deletePlaylistFromFirestore(id) {
 
 function showSyncIndicator() {
     const el = document.getElementById('sync-indicator');
-    if (el) { el.style.display = 'flex'; setTimeout(() => { el.style.display = 'none'; }, 3000); }
+    if (el) {
+        el.style.display = 'flex';
+        setTimeout(() => { el.style.display = 'none'; }, 3000);
+    }
 }
 
 /* ═══════════════════════════════════════
@@ -151,26 +177,30 @@ async function searchMusic() {
     const container = document.getElementById('results');
     container.innerHTML = '<div style="color:#b3b3b3;padding:24px 0;font-size:.9rem;">Recherche en cours…</div>';
 
-    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(q)}&type=video&videoCategoryId=10&maxResults=18&key=${YOUTUBE_API_KEY}`;
+    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(q)}&type=video&videoCategoryId=10&maxResults=18&key=${YOUTUBE_API_KEY}`;
     try {
-        const res  = await fetch(url);
+        const res  = await fetch(searchUrl);
         const data = await res.json();
-        if (data.error) { container.innerHTML = `<div style="color:#b3b3b3;padding:24px 0;">Erreur : ${data.error.message}</div>`; return; }
+        if (data.error) {
+            container.innerHTML = `<div style="color:#b3b3b3;padding:24px 0;">Erreur : ${data.error.message}</div>`;
+            return;
+        }
 
         const items = data.items || [];
 
-        // ── Récupérer les durées ──
-        const ids = items.map(i => i.id.videoId).join(',');
+        // ── Récupérer les durées en une seule requête ──
+        const ids        = items.map(i => i.id.videoId).join(',');
         const detailsUrl = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${ids}&key=${YOUTUBE_API_KEY}`;
-        const detailsRes  = await fetch(detailsUrl);
-        const detailsData = await detailsRes.json();
-        const durMap = {};
-        (detailsData.items || []).forEach(v => {
+        const detailsRes = await fetch(detailsUrl);
+        const details    = await detailsRes.json();
+        const durMap     = {};
+        (details.items || []).forEach(v => {
             durMap[v.id] = parseISO8601Duration(v.contentDetails.duration);
         });
 
         renderResults(items, durMap);
     } catch (e) {
+        console.error('Search error:', e);
         container.innerHTML = '<div style="color:#b3b3b3;padding:24px 0;">Erreur réseau.</div>';
     }
 }
@@ -184,7 +214,7 @@ function renderResults(items, durMap = {}) {
             title:    item.snippet.title,
             artist:   item.snippet.channelTitle,
             img:      item.snippet.thumbnails.medium.url,
-            duration: durMap[item.id.videoId] || '--:--'   // ← nouveau
+            duration: durMap[item.id.videoId] || '--:--'
         };
         const div = document.createElement('div');
         div.className = 'track-card';
@@ -227,8 +257,14 @@ function updatePlayerBar(t) {
     document.getElementById('current-track-artist').textContent = t.artist;
     const imgEl   = document.getElementById('current-track-img');
     const pholder = document.getElementById('thumb-placeholder');
-    if (t.img) { imgEl.src = t.img; imgEl.style.display = 'block'; pholder.style.display = 'none'; }
-    else        { imgEl.style.display = 'none'; pholder.style.display = 'flex'; }
+    if (t.img) {
+        imgEl.src = t.img;
+        imgEl.style.display = 'block';
+        pholder.style.display = 'none';
+    } else {
+        imgEl.style.display = 'none';
+        pholder.style.display = 'flex';
+    }
 }
 
 function setPlayState(playing) {
@@ -300,8 +336,14 @@ function setVolume(vol) {
 }
 
 function toggleMute() {
-    if (isMuted) { isMuted = false; setVolume(lastVolume || 100); }
-    else { lastVolume = +document.getElementById('volume-bar').value || 100; isMuted = true; setVolume(0); }
+    if (isMuted) {
+        isMuted = false;
+        setVolume(lastVolume || 100);
+    } else {
+        lastVolume = +document.getElementById('volume-bar').value || 100;
+        isMuted = true;
+        setVolume(0);
+    }
     syncVolIcon();
 }
 
@@ -321,11 +363,17 @@ function setBarFill(id, pct) {
     el.dataset.pct = pct;
 }
 
-['progress-bar','volume-bar'].forEach(id => {
+['progress-bar', 'volume-bar'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
-    el.addEventListener('mouseenter', () => { const p = el.dataset.pct || el.value; el.style.background = `linear-gradient(to right,#1db954 ${p}%,#535353 ${p}%)`; });
-    el.addEventListener('mouseleave', () => { const p = el.dataset.pct || el.value; el.style.background = `linear-gradient(to right,#ffffff ${p}%,#535353 ${p}%)`; });
+    el.addEventListener('mouseenter', () => {
+        const p = el.dataset.pct || el.value;
+        el.style.background = `linear-gradient(to right,#1db954 ${p}%,#535353 ${p}%)`;
+    });
+    el.addEventListener('mouseleave', () => {
+        const p = el.dataset.pct || el.value;
+        el.style.background = `linear-gradient(to right,#ffffff ${p}%,#535353 ${p}%)`;
+    });
 });
 
 /* ═══════════════════════════════════════
@@ -335,18 +383,26 @@ function addToQueue(t) {
     queue.push(t);
     saveQueue();
     renderQueue();
-    showToast(`« ${t.title.substring(0,30)}… » ajouté à la file`);
+    showToast(`« ${t.title.substring(0, 30)}… » ajouté à la file`);
 }
 
-function saveQueue() { localStorage.setItem('teslatubeQueue', JSON.stringify(queue)); }
+function saveQueue() {
+    localStorage.setItem('teslatubeQueue', JSON.stringify(queue));
+}
 
-function clearQueue() { queue = []; saveQueue(); renderQueue(); }
+function clearQueue() {
+    queue = [];
+    saveQueue();
+    renderQueue();
+}
 
 function renderQueue() {
     const container = document.getElementById('queue-list');
     const countEl   = document.getElementById('playlist-count');
     const n = queue.length;
-    countEl.textContent = n === 0 ? "File d'attente vide" : `${n} piste${n > 1 ? 's' : ''} dans la file`;
+    countEl.textContent = n === 0
+        ? "File d'attente vide"
+        : `${n} piste${n > 1 ? 's' : ''} dans la file`;
     container.innerHTML = '';
     queue.forEach((t, i) => {
         const div = document.createElement('div');
@@ -368,8 +424,18 @@ function renderQueue() {
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M5.25 5.25a.75.75 0 000 1.5h.75v11.25A2.25 2.25 0 008.25 20.25h7.5A2.25 2.25 0 0018 18V6.75h.75a.75.75 0 000-1.5H5.25zm2.25 1.5h9V18a.75.75 0 01-.75.75h-7.5a.75.75 0 01-.75-.75V6.75zm2.25-3a.75.75 0 000 1.5h3a.75.75 0 000-1.5h-3z"/></svg>
             </button>
         `;
-        div.addEventListener('click', () => { queue.splice(i, 1); saveQueue(); playTrack(t); renderQueue(); });
-        div.querySelector('.queue-more-btn').addEventListener('click', e => { e.stopPropagation(); queue.splice(i, 1); saveQueue(); renderQueue(); });
+        div.addEventListener('click', () => {
+            queue.splice(i, 1);
+            saveQueue();
+            playTrack(t);
+            renderQueue();
+        });
+        div.querySelector('.queue-more-btn').addEventListener('click', e => {
+            e.stopPropagation();
+            queue.splice(i, 1);
+            saveQueue();
+            renderQueue();
+        });
         container.appendChild(div);
     });
 }
@@ -388,7 +454,7 @@ async function createPlaylist(name) {
     const color = COLORS[playlists.length % COLORS.length];
     const pl    = { id, name, color, tracks: [], createdAt: Date.now() };
 
-    // Optimistic local update
+    // Mise à jour locale optimiste
     playlists.push(pl);
     renderLibrary();
 
@@ -467,7 +533,10 @@ function renderLibrary() {
             </button>
         `;
         div.addEventListener('click', () => openPlaylistView(pl.id));
-        div.querySelector('.lib-item-more').addEventListener('click', e => { e.stopPropagation(); openPlaylistOptionsDropdown(e, pl.id); });
+        div.querySelector('.lib-item-more').addEventListener('click', e => {
+            e.stopPropagation();
+            openPlaylistOptionsDropdown(e, pl.id);
+        });
         list.appendChild(div);
     });
 }
@@ -482,8 +551,8 @@ function filterLib(type, btn) {
 ════════════════════════════════════════ */
 function openPlaylistView(id) {
     currentSection = `playlist:${id}`;
-    document.getElementById('search-section').style.display = 'none';
-    document.getElementById('playlist-view-section').style.display = 'block';
+    document.getElementById('search-section').style.display          = 'none';
+    document.getElementById('playlist-view-section').style.display   = 'block';
     const pl = playlists.find(p => p.id === id);
     if (pl) {
         document.querySelector('.main-content').style.background =
@@ -516,7 +585,9 @@ function renderPlaylistView(id) {
         const newName = nameEl.textContent.trim();
         if (newName && newName !== pl.name) renamePlaylist(id, newName);
     });
-    nameEl.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); nameEl.blur(); } });
+    nameEl.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); nameEl.blur(); }
+    });
 
     document.getElementById('pl-controls').innerHTML = `
         <button class="btn-play-big" onclick="playPlaylist('${id}')">
@@ -564,8 +635,16 @@ function renderPlaylistView(id) {
                 <span class="pl-tr-dur">${t.duration || '--:--'}</span>
             </div>
         `;
-        div.addEventListener('click', () => { playTrack(t); queue = [...pl.tracks.slice(i + 1)]; saveQueue(); renderQueue(); });
-        div.querySelector('.pl-tr-remove').addEventListener('click', e => { e.stopPropagation(); removeTrackFromPlaylist(id, i); });
+        div.addEventListener('click', () => {
+            playTrack(t);
+            queue = [...pl.tracks.slice(i + 1)];
+            saveQueue();
+            renderQueue();
+        });
+        div.querySelector('.pl-tr-remove').addEventListener('click', e => {
+            e.stopPropagation();
+            removeTrackFromPlaylist(id, i);
+        });
         listEl.appendChild(div);
     });
 }
@@ -681,7 +760,7 @@ function positionDropdown(menu, e) {
     menu.style.top  = '0px';
     menu.style.left = '0px';
     document.body.appendChild(menu);
-    const x = e.clientX, y = e.clientY;
+    const x  = e.clientX, y = e.clientY;
     const mw = 220, mh = menu.scrollHeight || 300;
     const left = Math.min(x, window.innerWidth  - mw - 8);
     const top  = Math.min(y, window.innerHeight - mh - 8);
@@ -694,7 +773,9 @@ function closeDropdown() {
 }
 
 document.addEventListener('click', () => closeDropdown());
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeDropdown(); closeModal(); } });
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeDropdown(); closeModal(); }
+});
 
 /* ═══════════════════════════════════════
    MODAL
@@ -738,7 +819,10 @@ async function confirmModal() {
     if (!name) return;
     if (modalMode.action === 'create') {
         const id = await createPlaylist(name);
-        if (pendingTrackForNewPlaylist) { await addTrackToPlaylist(id, pendingTrackForNewPlaylist); pendingTrackForNewPlaylist = null; }
+        if (pendingTrackForNewPlaylist) {
+            await addTrackToPlaylist(id, pendingTrackForNewPlaylist);
+            pendingTrackForNewPlaylist = null;
+        }
     } else if (modalMode.action === 'rename') {
         await renamePlaylist(modalMode.playlistId, name);
     }
@@ -750,7 +834,9 @@ function closeModal(e) {
     document.getElementById('modal-overlay').classList.remove('open');
 }
 
-document.getElementById('modal-input').addEventListener('keydown', e => { if (e.key === 'Enter') confirmModal(); });
+document.getElementById('modal-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') confirmModal();
+});
 
 /* ═══════════════════════════════════════
    NAVIGATION
@@ -765,8 +851,8 @@ function showSearch() {
 }
 
 function focusSearch() { showSearch(); document.getElementById('search-input').focus(); }
-function goBack()    { history.back(); }
-function goForward() { history.forward(); }
+function goBack()      { history.back(); }
+function goForward()   { history.forward(); }
 
 /* ═══════════════════════════════════════
    TOAST
@@ -798,30 +884,13 @@ document.getElementById('btn-repeat').addEventListener('click',  function () { t
 document.getElementById('btn-heart').addEventListener('click',   function () { this.classList.toggle('active'); });
 
 /* ═══════════════════════════════════════
-   UTILS
-════════════════════════════════════════ */
-function fmtTime(sec) {
-    const m = Math.floor(sec / 60), s = Math.floor(sec % 60);
-    return `${m}:${s < 10 ? '0' : ''}${s}`;
-}
-function esc(str) {
-    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-/* ═══════════════════════════════════════
    INIT
 ════════════════════════════════════════ */
 document.getElementById('search-btn').addEventListener('click', searchMusic);
-document.getElementById('search-input').addEventListener('keypress', e => { if (e.key === 'Enter') searchMusic(); });
+document.getElementById('search-input').addEventListener('keypress', e => {
+    if (e.key === 'Enter') searchMusic();
+});
 
 setBarFill('volume-bar', 100);
 renderQueue();
-renderLibrary();
-
-function parseISO8601Duration(iso) {
-    const m = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
-    if (!m) return '--:--';
-    const h = parseInt(m[1] || 0), min = parseInt(m[2] || 0), sec = parseInt(m[3] || 0);
-    const total = h * 3600 + min * 60 + sec;
-    return fmtTime(total);
-}
+// renderLibrary() sera appelé par le listener Firestore une fois connecté
