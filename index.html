@@ -63,7 +63,7 @@
                     <button class="nav-item library-btn"><i class="fas fa-book"></i> <span>Bibliothèque</span></button>
                     <button onclick="createPlaylist()" class="btn-circle-sm"><i class="fas fa-plus"></i></button>
                 </div>
-                <div id="library-content" class="library-empty"></div>
+                <div id="library-content"></div> 
             </div>
         </aside>
 
@@ -76,7 +76,7 @@
                 </div>
 
                 <div class="topbar-right">
-                    <button class="user-btn" onclick="toggleUserMenu()">
+                    <button class="user-btn" style="background:none; border:none;" onclick="toggleUserMenu()">
                         <div id="user-avatar" class="user-avatar">?</div>
                     </button>
                     <div id="user-menu" class="user-dropdown">
@@ -138,16 +138,18 @@
     </div>
 
     <div id="youtube-player" style="display: none;"></div>
+    
+    <div id="playlist-modal" class="playlist-popup" style="display:none;">
+        <div class="popup-header">
+            <span>Ajouter à...</span>
+            <button onclick="closePlaylistModal()">&times;</button>
+        </div>
+        <div id="playlist-options" class="popup-body"></div>
+    </div>
+
+    <div id="toast">Titre ajouté à la playlist</div>
+
     <script src="https://www.youtube.com/iframe_api"></script>
     <script src="app.js"></script>
-    <div id="playlist-modal" class="playlist-popup" style="display:none;">
-    <div class="popup-header">
-        <span>Ajouter à...</span>
-        <button onclick="closePlaylistModal()">&times;</button>
-    </div>
-    <div id="playlist-options" class="popup-body">
-        </div>
-</div>
-    <div id="toast">Titre ajouté à la playlist</div>
 </body>
 </html>
