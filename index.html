@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teslatube</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://www.youtube.com/iframe_api"></script>
 </head>
@@ -13,52 +13,108 @@
 
 <!-- ═══ AUTH OVERLAY ═══ -->
 <div id="auth-overlay" class="auth-overlay">
+
+    <!-- Fond animé -->
+    <div class="auth-bg">
+        <div class="auth-orb auth-orb-1"></div>
+        <div class="auth-orb auth-orb-2"></div>
+        <div class="auth-orb auth-orb-3"></div>
+        <div class="auth-grid"></div>
+    </div>
+
     <div class="auth-card">
+
+        <!-- Logo -->
         <div class="auth-logo">
-            <svg viewBox="0 0 24 24" fill="#1DB954" width="40" height="40"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 01-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.623.623 0 01-.277-1.215c3.809-.87 7.076-.496 9.712 1.115a.624.624 0 01.207.857zm1.223-2.722a.78.78 0 01-1.072.257c-2.687-1.652-6.785-2.131-9.965-1.166a.78.78 0 01-.973-.519.781.781 0 01.519-.972c3.632-1.102 8.147-.568 11.234 1.328a.78.78 0 01.257 1.072zm.105-2.835c-3.223-1.914-8.54-2.09-11.618-1.156a.935.935 0 01-.582-1.782c3.532-1.153 9.404-.93 13.115 1.338a.933.933 0 11-.915 1.6z"/></svg>
+            <div class="auth-logo-icon">
+                <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22">
+                    <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 01-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.623.623 0 01-.277-1.215c3.809-.87 7.076-.496 9.712 1.115a.624.624 0 01.207.857zm1.223-2.722a.78.78 0 01-1.072.257c-2.687-1.652-6.785-2.131-9.965-1.166a.78.78 0 01-.973-.519.781.781 0 01.519-.972c3.632-1.102 8.147-.568 11.234 1.328a.78.78 0 01.257 1.072zm.105-2.835c-3.223-1.914-8.54-2.09-11.618-1.156a.935.935 0 01-.582-1.782c3.532-1.153 9.404-.93 13.115 1.338a.933.933 0 11-.915 1.6z"/>
+                </svg>
+            </div>
             <span class="auth-logo-text">Teslatube</span>
         </div>
 
+        <!-- Tabs -->
         <div class="auth-tabs">
             <button id="tab-login" class="auth-tab auth-tab-active">Connexion</button>
             <button id="tab-register" class="auth-tab">Créer un compte</button>
+            <div class="auth-tab-indicator" id="tab-indicator"></div>
         </div>
 
         <!-- Formulaire connexion -->
         <form id="form-login" class="auth-form">
-            <label class="auth-label">
-                E-mail
-                <input id="login-email" type="email" class="auth-input" placeholder="ton@email.com" required autocomplete="email">
-            </label>
-            <label class="auth-label">
-                Mot de passe
-                <input id="login-password" type="password" class="auth-input" placeholder="••••••••" required autocomplete="current-password">
-            </label>
-            <p id="auth-error" class="auth-error"></p>
-            <button id="btn-login" type="submit" class="auth-submit-btn">Se connecter</button>
+            <div class="auth-field">
+                <label class="auth-label">E-mail</label>
+                <div class="auth-input-wrap">
+                    <svg class="auth-field-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                    <input id="login-email" type="email" class="auth-input" placeholder="ton@email.com" required autocomplete="email">
+                </div>
+            </div>
+            <div class="auth-field">
+                <label class="auth-label">Mot de passe</label>
+                <div class="auth-input-wrap">
+                    <svg class="auth-field-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                    <input id="login-password" type="password" class="auth-input" placeholder="••••••••" required autocomplete="current-password">
+                    <button type="button" class="auth-eye-btn" onclick="togglePwd('login-password', this)">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </button>
+                </div>
+            </div>
+            <p id="auth-error-login" class="auth-error"></p>
+            <button id="btn-login" type="submit" class="auth-submit-btn">
+                <span>Se connecter</span>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </button>
         </form>
 
         <!-- Formulaire inscription -->
         <form id="form-register" class="auth-form" style="display:none">
-            <label class="auth-label">
-                E-mail
-                <input id="register-email" type="email" class="auth-input" placeholder="ton@email.com" required autocomplete="email">
-            </label>
-            <label class="auth-label">
-                Mot de passe
-                <input id="register-password" type="password" class="auth-input" placeholder="Minimum 6 caractères" required autocomplete="new-password">
-            </label>
-            <label class="auth-label">
-                Confirmer le mot de passe
-                <input id="register-confirm" type="password" class="auth-input" placeholder="Confirme ton mot de passe" required autocomplete="new-password">
-            </label>
-            <p id="auth-error" class="auth-error"></p>
-            <button id="btn-register" type="submit" class="auth-submit-btn">Créer un compte</button>
+            <div class="auth-field">
+                <label class="auth-label">E-mail</label>
+                <div class="auth-input-wrap">
+                    <svg class="auth-field-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                    <input id="register-email" type="email" class="auth-input" placeholder="ton@email.com" required autocomplete="email">
+                </div>
+            </div>
+            <div class="auth-field">
+                <label class="auth-label">Mot de passe</label>
+                <div class="auth-input-wrap">
+                    <svg class="auth-field-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                    <input id="register-password" type="password" class="auth-input" placeholder="Minimum 6 caractères" required autocomplete="new-password">
+                    <button type="button" class="auth-eye-btn" onclick="togglePwd('register-password', this)">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </button>
+                </div>
+                <div class="pwd-strength" id="pwd-strength">
+                    <div class="pwd-bar" id="pwd-bar-1"></div>
+                    <div class="pwd-bar" id="pwd-bar-2"></div>
+                    <div class="pwd-bar" id="pwd-bar-3"></div>
+                    <div class="pwd-bar" id="pwd-bar-4"></div>
+                    <span class="pwd-label" id="pwd-label"></span>
+                </div>
+            </div>
+            <div class="auth-field">
+                <label class="auth-label">Confirmer le mot de passe</label>
+                <div class="auth-input-wrap">
+                    <svg class="auth-field-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                    <input id="register-confirm" type="password" class="auth-input" placeholder="Confirme ton mot de passe" required autocomplete="new-password">
+                    <button type="button" class="auth-eye-btn" onclick="togglePwd('register-confirm', this)">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </button>
+                </div>
+            </div>
+            <p id="auth-error-register" class="auth-error"></p>
+            <button id="btn-register" type="submit" class="auth-submit-btn">
+                <span>Créer mon compte</span>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </button>
         </form>
+
+        <p class="auth-footer">En continuant, vous acceptez nos <a href="#">Conditions d'utilisation</a></p>
     </div>
 </div>
 
-<!-- ═══ APP (masqué jusqu'à l'auth) ═══ -->
+<!-- ═══ APP ═══ -->
 <div class="app" id="app" style="display:none">
 
     <!-- ═══ SIDEBAR ═══ -->
@@ -70,37 +126,34 @@
             </div>
             <nav class="sidebar-nav">
                 <a class="nav-item active" onclick="focusSearch()" id="nav-home">
-                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M13.5 1.515a3 3 0 00-3 0L3 5.845a2 2 0 00-1 1.732V21a1 1 0 001 1h6a1 1 0 001-1v-6h4v6a1 1 0 001 1h6a1 1 0 001-1V7.577a2 2 0 00-1-1.732l-7.5-4.33z"/></svg>
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M13.5 1.515a3 3 0 00-3 0L3 5.845a2 2 0 00-1 1.732V21a1 1 0 001 1h6a1 1 0 001-1v-6h4v6a1 1 0 001 1h6a1 1 0 001-1V7.577a2 2 0 00-1-1.732l-7.5-4.33z"/></svg>
                     Accueil
                 </a>
                 <a class="nav-item" onclick="focusSearch()" id="nav-search">
-                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M10.533 1.279c-5.18 0-9.407 4.226-9.407 9.407 0 5.18 4.226 9.407 9.407 9.407 2.19 0 4.2-.755 5.8-2.02l4.996 4.997a1 1 0 001.414-1.414l-4.994-4.994a9.368 9.368 0 002.191-6.976 9.407 9.407 0 00-9.407-9.407zm-7.407 9.407a7.407 7.407 0 1114.814 0 7.407 7.407 0 01-14.814 0z"/></svg>
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M10.533 1.279c-5.18 0-9.407 4.226-9.407 9.407 0 5.18 4.226 9.407 9.407 9.407 2.19 0 4.2-.755 5.8-2.02l4.996 4.997a1 1 0 001.414-1.414l-4.994-4.994a9.368 9.368 0 002.191-6.976 9.407 9.407 0 00-9.407-9.407zm-7.407 9.407a7.407 7.407 0 1114.814 0 7.407 7.407 0 01-14.814 0z"/></svg>
                     Rechercher
                 </a>
             </nav>
         </div>
+
         <div class="sidebar-library">
             <div class="library-header">
                 <button class="nav-item library-btn">
-                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M3 22a1 1 0 01-1-1V3a1 1 0 012 0v18a1 1 0 01-1 1zM15.5 2.134A1 1 0 0014 3v18a1 1 0 001.5.866l7-4a1 1 0 000-1.732l-7-4zM7 22a1 1 0 01-1-1V3a1 1 0 012 0v18a1 1 0 01-1 1z"/></svg>
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M3 22a1 1 0 01-1-1V3a1 1 0 012 0v18a1 1 0 01-1 1zM15.5 2.134A1 1 0 0014 3v18a1 1 0 001.5.866l7-4a1 1 0 000-1.732l-7-4zM7 22a1 1 0 01-1-1V3a1 1 0 012 0v18a1 1 0 01-1 1z"/></svg>
                     Bibliothèque
                 </button>
-                <button class="btn-circle-sm" title="Créer">
+                <button class="btn-circle-sm" title="Créer une playlist">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M11 11V3h2v8h8v2h-8v8h-2v-8H3v-2z"/></svg>
                 </button>
             </div>
-            <div class="library-empty">
-                <div class="library-empty-card">
-                    <p class="lib-empty-title">Créez votre première playlist</p>
-                    <p class="lib-empty-sub">C'est facile, nous allons vous aider.</p>
-                    <button class="btn-pill-white" onclick="focusSearch()">Créer une playlist</button>
-                </div>
-                <div class="library-empty-card">
-                    <p class="lib-empty-title">Parcourez les podcasts</p>
-                    <p class="lib-empty-sub">Nous vous montrerons les podcasts auxquels vous êtes abonné.</p>
-                    <button class="btn-pill-white" onclick="focusSearch()">Explorer les podcasts</button>
+            <!-- Barre de recherche dans la sidebar -->
+            <div class="sidebar-search" id="sidebar-search" style="display:none">
+                <div class="sidebar-search-wrap">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M10.533 1.279c-5.18 0-9.407 4.226-9.407 9.407 0 5.18 4.226 9.407 9.407 9.407 2.19 0 4.2-.755 5.8-2.02l4.996 4.997a1 1 0 001.414-1.414l-4.994-4.994a9.368 9.368 0 002.191-6.976 9.407 9.407 0 00-9.407-9.407zm-7.407 9.407a7.407 7.407 0 1114.814 0 7.407 7.407 0 01-14.814 0z"/></svg>
+                    <input type="text" id="sidebar-search-input" placeholder="Rechercher dans les playlists…">
                 </div>
             </div>
+            <div class="library-empty" id="library-empty"></div>
         </div>
     </aside>
 
@@ -114,14 +167,15 @@
                 <button id="search-btn">Rechercher</button>
             </div>
             <div class="topbar-right">
-                <!-- Menu utilisateur -->
                 <div class="user-menu-wrap">
                     <button class="topbar-circle-btn user-btn" id="btn-user-menu">
                         <div class="user-avatar" id="user-initial">?</div>
                     </button>
                     <div class="user-dropdown" id="user-dropdown">
+                        <div class="user-dropdown-info" id="user-email-display"></div>
+                        <div class="user-dropdown-divider"></div>
                         <button id="btn-logout" class="user-dropdown-item">
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M11 5a1 1 0 110-2h8a1 1 0 011 1v14a1 1 0 01-1 1h-8a1 1 0 110-2h7V5h-7zm-4.707 8.707a1 1 0 01-1.414-1.414L6.586 11H1a1 1 0 110-2h5.586L5.293 7.707a1 1 0 011.414-1.414l3 3a1 1 0 010 1.414l-3 3z"/></svg>
+                            <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M11 5a1 1 0 110-2h8a1 1 0 011 1v14a1 1 0 01-1 1h-8a1 1 0 110-2h7V5h-7zm-4.707 8.707a1 1 0 01-1.414-1.414L6.586 11H1a1 1 0 110-2h5.586L5.293 7.707a1 1 0 011.414-1.414l3 3a1 1 0 010 1.414l-3 3z"/></svg>
                             Se déconnecter
                         </button>
                     </div>
@@ -131,7 +185,9 @@
 
         <div class="section-content">
             <div id="results-placeholder" class="results-placeholder">
-                <svg viewBox="0 0 24 24" width="64" height="64" fill="#535353"><path d="M10.533 1.279c-5.18 0-9.407 4.226-9.407 9.407 0 5.18 4.226 9.407 9.407 9.407 2.19 0 4.2-.755 5.8-2.02l4.996 4.997a1 1 0 001.414-1.414l-4.994-4.994a9.368 9.368 0 002.191-6.976 9.407 9.407 0 00-9.407-9.407zm-7.407 9.407a7.407 7.407 0 1114.814 0 7.407 7.407 0 01-14.814 0z"/></svg>
+                <div class="placeholder-icon">
+                    <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor"><path d="M10.533 1.279c-5.18 0-9.407 4.226-9.407 9.407 0 5.18 4.226 9.407 9.407 9.407 2.19 0 4.2-.755 5.8-2.02l4.996 4.997a1 1 0 001.414-1.414l-4.994-4.994a9.368 9.368 0 002.191-6.976 9.407 9.407 0 00-9.407-9.407zm-7.407 9.407a7.407 7.407 0 1114.814 0 7.407 7.407 0 01-14.814 0z"/></svg>
+                </div>
                 <h2>Recherchez votre musique</h2>
                 <p>Trouvez vos artistes et titres préférés.</p>
             </div>
@@ -149,14 +205,11 @@
         </div>
         <div class="queue-section-label">Piste suivante</div>
         <div class="queue-meta">
-            <span id="playlist-count">0 piste dans la file d'attente</span>
+            <span id="playlist-count">File vide</span>
             <div class="queue-meta-actions">
-                <button class="btn-queue-icon" title="Filtrer">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M1 6a1 1 0 011-1h20a1 1 0 110 2H2a1 1 0 01-1-1zM4 12a1 1 0 011-1h14a1 1 0 110 2H5a1 1 0 01-1-1zM8 17a1 1 0 011-1h6a1 1 0 110 2H9a1 1 0 01-1-1z"/></svg>
-                </button>
                 <button class="btn-queue-clear" onclick="clearPlaylist()">
                     <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M2 6a1 1 0 011-1h1.5l1.707-1.707A1 1 0 017.914 3h8.172a1 1 0 01.707.293L18.5 5H20a1 1 0 110 2H4a1 1 0 01-2-2zm2.9 3.1A1 1 0 016.837 8.9L7 9.067V19a2 2 0 002 2h6a2 2 0 002-2V9.067l.163-.167a1 1 0 011.374 1.453L18 10.934V19a4 4 0 01-4 4H10a4 4 0 01-4-4v-8.066L5.1 10.1A1 1 0 014.9 9.1z"/></svg>
-                    Tout effacer
+                    Vider
                 </button>
             </div>
         </div>
@@ -179,9 +232,6 @@
             <div class="player-track-actions">
                 <button class="ctrl-icon" id="btn-heart" title="Aimer">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12.442 19.91c-.338.35-.88.35-1.217 0C9.501 18.017 2 12.83 2 8.5 2 5.42 4.42 3 7.5 3c1.49 0 2.87.61 3.872 1.688L12 5.4l.628-.712A5.496 5.496 0 0116.5 3C19.58 3 22 5.42 22 8.5c0 4.33-7.501 9.516-9.225 11.286l-.333.124z"/></svg>
-                </button>
-                <button class="ctrl-icon" title="Ajouter à la liste">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M11 11V3h2v8h8v2h-8v8h-2v-8H3v-2z"/></svg>
                 </button>
             </div>
         </div>
@@ -218,9 +268,6 @@
             <button class="ctrl-icon" id="btn-queue-toggle" onclick="toggleQueue()" title="File d'attente">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M15 4a1 1 0 100 2h6a1 1 0 100-2h-6zm0 5a1 1 0 100 2h6a1 1 0 100-2h-6zm0 5a1 1 0 100 2h6a1 1 0 100-2h-6zM6 4a1 1 0 00-1 1v8.5a2.5 2.5 0 101 0V5a1 1 0 00-1-1zm0 13a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"/></svg>
             </button>
-            <button class="ctrl-icon" title="Périphériques disponibles">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M6 3a3 3 0 00-3 3v10a3 3 0 003 3h2v2H6a1 1 0 100 2h12a1 1 0 100-2h-2v-2h2a3 3 0 003-3V6a3 3 0 00-3-3H6zm0 2h12a1 1 0 011 1v10a1 1 0 01-1 1H6a1 1 0 01-1-1V6a1 1 0 011-1z"/></svg>
-            </button>
             <div class="volume-control">
                 <button class="ctrl-icon" id="btn-mute" onclick="toggleMute()" title="Volume">
                     <svg id="icon-vol-on" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M13 3.536v16.928a1 1 0 01-1.6.8L5.333 17H3a2 2 0 01-2-2v-6a2 2 0 012-2h2.333L11.4 2.736a1 1 0 011.6.8zm4.153 3.415a1 1 0 011.352.44 8.942 8.942 0 010 9.218 1 1 0 01-1.79-.896 6.942 6.942 0 000-7.414 1 1 0 01.438-1.348zm-2.784 2.905a1 1 0 011.384.302 4.964 4.964 0 010 5.484 1 1 0 01-1.686-1.082 2.964 2.964 0 000-3.32 1 1 0 01.302-1.384z"/></svg>
@@ -239,21 +286,64 @@
 </div>
 
 <script>
-    // Dropdown utilisateur (toggle)
-    document.addEventListener('click', (e) => {
-        const wrap     = document.getElementById('user-menu-wrap') || e.target.closest('.user-menu-wrap');
-        const dropdown = document.getElementById('user-dropdown');
-        const btn      = document.getElementById('btn-user-menu');
-        if (!dropdown) return;
-        if (btn && btn.contains(e.target)) {
-            dropdown.classList.toggle('open');
-        } else if (!dropdown.contains(e.target)) {
-            dropdown.classList.remove('open');
-        }
-    });
+function togglePwd(inputId, btn) {
+    const inp = document.getElementById(inputId);
+    const isText = inp.type === 'text';
+    inp.type = isText ? 'password' : 'text';
+    btn.innerHTML = isText
+        ? `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`
+        : `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
+}
+
+// Force du mot de passe
+document.addEventListener('DOMContentLoaded', () => {
+    const pwdInput = document.getElementById('register-password');
+    if (pwdInput) {
+        pwdInput.addEventListener('input', function() {
+            const val = this.value;
+            let score = 0;
+            if (val.length >= 6)  score++;
+            if (val.length >= 10) score++;
+            if (/[A-Z]/.test(val) && /[0-9]/.test(val)) score++;
+            if (/[^A-Za-z0-9]/.test(val)) score++;
+            const bars   = document.querySelectorAll('.pwd-bar');
+            const label  = document.getElementById('pwd-label');
+            const colors = ['#f15e6c','#f4a261','#f4a261','#1db954'];
+            const labels = ['Faible','Moyen','Bon','Fort'];
+            bars.forEach((b, i) => {
+                b.style.background = i < score ? colors[score - 1] : 'rgba(255,255,255,0.1)';
+            });
+            label.textContent = val.length > 0 ? labels[score - 1] || '' : '';
+            label.style.color = val.length > 0 ? (colors[score - 1] || '') : '';
+        });
+    }
+
+    // Tab indicator
+    const updateIndicator = (tab) => {
+        const indicator = document.getElementById('tab-indicator');
+        const el = document.getElementById(`tab-${tab}`);
+        if (!indicator || !el) return;
+        indicator.style.left  = el.offsetLeft + 'px';
+        indicator.style.width = el.offsetWidth + 'px';
+    };
+    updateIndicator('login');
+    document.getElementById('tab-login')?.addEventListener('click', () => updateIndicator('login'));
+    document.getElementById('tab-register')?.addEventListener('click', () => updateIndicator('register'));
+});
+
+// Dropdown utilisateur
+document.addEventListener('click', (e) => {
+    const dropdown = document.getElementById('user-dropdown');
+    const btn = document.getElementById('btn-user-menu');
+    if (!dropdown) return;
+    if (btn && btn.contains(e.target)) {
+        dropdown.classList.toggle('open');
+    } else if (!dropdown.contains(e.target)) {
+        dropdown.classList.remove('open');
+    }
+});
 </script>
 
 <script type="module" src="script.js"></script>
 </body>
 </html>
-Terminé
