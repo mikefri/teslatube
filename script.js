@@ -179,13 +179,28 @@ function showSyncIndicator() {
 ════════════════════════════════════════ */
 function onYouTubeIframeAPIReady() {
     player = new YT.Player('player', {
-        height: '0', width: '0', videoId: '',
-        playerVars: { playsinline: 1 },
+        height: '1',
+        width:  '1',
+        videoId: '',
+        playerVars: {
+            playsinline:    1,
+            origin:         window.location.origin,
+            enablejsapi:    1,
+            iv_load_policy: 3,   // pas d'annotations
+            rel:            0    // pas de suggestions
+        },
         events: {
             onReady:       () => setVolume(100),
-            onStateChange: onPlayerStateChange
+            onStateChange: onPlayerStateChange,
+            onError:       onPlayerError
         }
     });
+}
+
+// Gère les erreurs silencieusement
+function onPlayerError(event) {
+    console.warn('[Player] Erreur YouTube :', event.data);
+    setPlayState(false);
 }
 
 function onPlayerStateChange(event) {
