@@ -1,41 +1,43 @@
 /* ═══════════════════════════════════════════════════
    TESLATUBE — service-worker.js
-   PWA : Cache statique + stratégie réseau
 ════════════════════════════════════════════════════ */
 
-const CACHE_NAME    = 'teslatube-v1';
+const CACHE_NAME    = 'teslatube-v2';
 const STATIC_ASSETS = [
-    '/',
-    '/index.html',
-    '/style.css',
-    '/script.js',
-    '/manifest.json',
-    '/icons/icon-192.png',
-    '/icons/icon-512.png'
+    '/teslatube/',
+    '/teslatube/index.html',
+    '/teslatube/style.css',
+    '/teslatube/script.js',
+    '/teslatube/pwa.js',
+    '/teslatube/manifest.json'
 ];
 
-/* ── Installation : mise en cache des assets statiques ── */
+/* ── Installation : cache souple (ignore les erreurs) ── */
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME).then(cache => {
-            console.log('[SW] Mise en cache des assets statiques');
-            return cache.addAll(STATIC_ASSETS);
+            // On cache chaque fichier individuellement
+            // pour qu'une erreur sur un fichier ne bloque pas tout
+            return Promise.allSettled(
+                STATIC_ASSETS.map(url =>
+                    cache.add(url).catch(err =>
+                        console.warn('[SW] Impossible de cacher :', url, err)
+                    )
+                )
+            );
         })
     );
     self.skipWaiting();
 });
 
-/* ── Activation : suppression des anciens caches ── */
+/* ── Activation : nettoyage des anciens caches ── */
 self.addEventListener('activate', event => {
     event.waitUntil(
         caches.keys().then(keys =>
             Promise.all(
                 keys
                     .filter(key => key !== CACHE_NAME)
-                    .map(key => {
-                        console.log('[SW] Suppression ancien cache :', key);
-                        return caches.delete(key);
-                    })
+                    .map(key => caches.delete(key))
             )
         )
     );
@@ -46,27 +48,28 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
     const url = new URL(event.request.url);
 
-    // 1. API YouTube → Network Only (pas de cache, données fraîches)
+    // API YouTube → Network Only
     if (url.hostname.includes('googleapis.com') || url.hostname.includes('youtube.com')) {
-        event.respondWith(fetch(event.request));
+        event.respondWith(fetch(event.request).catch(() => new Response('', { status: 503 })));
         return;
     }
 
-    // 2. Firebase → Network Only (auth + Firestore en temps réel)
-    if (url.hostname.includes('firebase') || url.hostname.includes('firestore')) {
-        event.respondWith(fetch(event.request));
+    // Firebase → Network Only
+    if (url.hostname.includes('firebase') || url.hostname.includes('firestore') || url.hostname.includes('identitytoolkit')) {
+        event.respondWith(fetch(event.request).catch(() => new Response('', { status: 503 })));
         return;
     }
 
-    // 3. Thumbnails YouTube → Cache First (images statiques, mise en cache auto)
+    // Thumbnails YouTube → Cache First
     if (url.hostname.includes('ytimg.com') || url.hostname.includes('yt3.ggpht.com')) {
         event.respondWith(
             caches.match(event.request).then(cached => {
                 if (cached) return cached;
                 return fetch(event.request).then(response => {
-                    if (!response || response.status !== 200) return response;
-                    const clone = response.clone();
-                    caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+                    if (response && response.status === 200) {
+                        const clone = response.clone();
+                        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+                    }
                     return response;
                 }).catch(() => new Response('', { status: 408 }));
             })
@@ -74,46 +77,33 @@ self.addEventListener('fetch', event => {
         return;
     }
 
-    // 4. Google Fonts → Cache First
+    // Google Fonts → Cache First
     if (url.hostname.includes('fonts.googleapis.com') || url.hostname.includes('fonts.gstatic.com')) {
         event.respondWith(
             caches.match(event.request).then(cached => {
                 if (cached) return cached;
                 return fetch(event.request).then(response => {
-                    const clone = response.clone();
-                    caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+                    if (response && response.status === 200) {
+                        const clone = response.clone();
+                        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+                    }
                     return response;
-                });
+                }).catch(() => new Response('', { status: 408 }));
             })
         );
         return;
     }
 
-    // 5. Assets locaux (HTML, CSS, JS, icons) → Stale While Revalidate
-    //    Répond immédiatement depuis le cache, met à jour en arrière-plan
+    // Assets locaux → Network First avec fallback cache
     event.respondWith(
-        caches.match(event.request).then(cached => {
-            const networkFetch = fetch(event.request).then(response => {
+        fetch(event.request)
+            .then(response => {
                 if (response && response.status === 200) {
                     const clone = response.clone();
                     caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
                 }
                 return response;
-            }).catch(() => cached); // si hors ligne, utilise le cache
-
-            return cached || networkFetch;
-        })
+            })
+            .catch(() => caches.match(event.request))
     );
-});
-
-/* ── Notification push (optionnel, pour plus tard) ── */
-self.addEventListener('push', event => {
-    if (!event.data) return;
-    const data = event.data.json();
-    self.registration.showNotification(data.title || 'TeslaTube', {
-        body:    data.body || '',
-        icon:    '/icons/icon-192.png',
-        badge:   '/icons/icon-72.png',
-        vibrate: [200, 100, 200]
-    });
 });
