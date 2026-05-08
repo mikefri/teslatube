@@ -263,6 +263,7 @@ function renderResults(items, durMap = {}) {
         div.querySelector('.card-options-btn').addEventListener('click', e => { e.stopPropagation(); openTrackDropdown(e, t); });
         container.appendChild(div);
     });
+   updateMediaSession(t);
 }
 
 /* ═══════════════════════════════════════
