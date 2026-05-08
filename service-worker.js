@@ -2,7 +2,7 @@
    TESLATUBE — service-worker.js
 ════════════════════════════════════════════════════ */
 
-const CACHE_NAME    = 'teslatube-v2.3';
+const CACHE_NAME    = 'teslatube-v2.4';
 const STATIC_ASSETS = [
     '/teslatube/',
     '/teslatube/index.html',
