@@ -1,17 +1,20 @@
 /* ═══════════════════════════════════════════════════
-   TESLATUBE — script.js
+   TESLATUBE — script.js  v2.6
    Playlist management + Queue + Player + Firebase
+   Améliorations : cache recherche, shuffle/repeat
+   fonctionnels, confirmation suppression, recherche
+   avec délai, toast file vide.
 ════════════════════════════════════════════════════ */
 
 // ── Firebase Config ──
 const firebaseConfig = {
-    apiKey: "AIzaSyANf8hNGIRryPmZytIxIQ4uDhY6fR6uDKM",
-    authDomain: "teslatube-560c0.firebaseapp.com",
-    projectId: "teslatube-560c0",
-    storageBucket: "teslatube-560c0.firebasestorage.app",
+    apiKey:            "AIzaSyANf8hNGIRryPmZytIxIQ4uDhY6fR6uDKM",
+    authDomain:        "teslatube-560c0.firebaseapp.com",
+    projectId:         "teslatube-560c0",
+    storageBucket:     "teslatube-560c0.firebasestorage.app",
     messagingSenderId: "1019331471126",
-    appId: "1:1019331471126:web:29beb2914436836bd41237",
-    measurementId: "G-K05WJMWGGH"
+    appId:             "1:1019331471126:web:29beb2914436836bd41237",
+    measurementId:     "G-K05WJMWGGH"
 };
 
 const YOUTUBE_API_KEY = "AIzaSyBX9_dZTK6PHaCI9_kOnT4jguY0u64o-54";
@@ -37,6 +40,12 @@ let modalMode            = null;
 let openDropdownTrack    = null;
 let currentUserId        = null;
 let unsubscribePlaylists = null;
+
+// ── Nouveaux états ──
+let shuffleMode          = false;
+let repeatMode           = false;
+const searchCache        = new Map();   // cache des résultats YouTube
+let searchTimeout        = null;        // délai de recherche auto
 
 // ── Palette ──
 const COLORS = ['#e91429','#503750','#0d73ec','#148a08','#e8115b','#27856a','#8d67ab','#1e3264','#f59b23','#0e6251'];
@@ -208,21 +217,41 @@ function onYouTubeIframeAPIReady() {
 function onPlayerError(event) {
     console.warn('[Player] Erreur YouTube :', event.data);
     setPlayState(false);
+    showToast('Erreur de lecture, passage au suivant…');
+    setTimeout(() => nextTrack(), 1500);
 }
 
 function onPlayerStateChange(event) {
     const S = YT.PlayerState;
-    if (event.data === S.ENDED)   nextTrack();
+    if (event.data === S.ENDED)   handleTrackEnd();
     if (event.data === S.PAUSED)  setPlayState(false);
     if (event.data === S.PLAYING) setPlayState(true);
 }
 
+// ── Gestion de fin de piste (repeat / normal) ──
+function handleTrackEnd() {
+    if (repeatMode && currentTrack) {
+        player.seekTo(0, true);
+        player.playVideo();
+    } else {
+        nextTrack();
+    }
+}
+
 /* ═══════════════════════════════════════
-   SEARCH
+   SEARCH  (avec cache + délai auto)
 ════════════════════════════════════════ */
 async function searchMusic() {
     const q = document.getElementById('search-input').value.trim();
     if (!q) return;
+
+    // ── Cache hit : pas de requête API ──
+    if (searchCache.has(q)) {
+        document.getElementById('results-placeholder').style.display = 'none';
+        const [items, durMap] = searchCache.get(q);
+        renderResults(items, durMap);
+        return;
+    }
 
     document.getElementById('results-placeholder').style.display = 'none';
     const container = document.getElementById('results');
@@ -252,6 +281,9 @@ async function searchMusic() {
                 views:    formatViews(v.statistics?.viewCount)
             };
         });
+
+        // ── Mettre en cache ──
+        searchCache.set(q, [items, durMap]);
 
         renderResults(items, durMap);
     } catch (e) {
@@ -338,13 +370,22 @@ function togglePlay() {
     player.getPlayerState() === 1 ? player.pauseVideo() : player.playVideo();
 }
 
+// ── Piste suivante (shuffle ou normal) ──
 function nextTrack() {
-    if (queue.length > 0) {
-        const next = queue.shift();
-        saveQueue();
-        playTrack(next);
-        renderQueue();
+    if (queue.length === 0) {
+        showToast('File d\'attente vide');
+        return;
     }
+    let next;
+    if (shuffleMode) {
+        const idx = Math.floor(Math.random() * queue.length);
+        next = queue.splice(idx, 1)[0];
+    } else {
+        next = queue.shift();
+    }
+    saveQueue();
+    playTrack(next);
+    renderQueue();
 }
 
 function prevTrack() {
@@ -548,7 +589,11 @@ async function renamePlaylist(id, newName) {
     showToast('Playlist renommée');
 }
 
+// ── Suppression avec confirmation ──
 async function deletePlaylist(id) {
+    const pl = playlists.find(p => p.id === id);
+    if (!pl) return;
+    if (!confirm(`Supprimer la playlist « ${pl.name} » ? Cette action est irréversible.`)) return;
     playlists = playlists.filter(p => p.id !== id);
     renderLibrary();
     if (currentSection === `playlist:${id}`) showSearch();
@@ -616,12 +661,10 @@ function renderLibrary() {
     });
 }
 
-
 /* ── Bibliothèque mobile ── */
 function focusLibrary() {
     const sidebar = document.querySelector('.sidebar');
     const isOpen  = sidebar.classList.toggle('mobile-open');
-    // Fermer automatiquement quand on clique sur une playlist
     if (isOpen) {
         sidebar.querySelectorAll('.lib-item').forEach(item => {
             item.addEventListener('click', () => {
@@ -934,7 +977,6 @@ document.getElementById('modal-input').addEventListener('keydown', e => {
 function showSearch() {
     currentSection = 'search';
     document.querySelector('.sidebar')?.classList.remove('mobile-open');
-    currentSection = 'search';
     document.getElementById('search-section').style.display         = 'block';
     document.getElementById('playlist-view-section').style.display  = 'none';
     document.querySelector('.main-content').style.background =
@@ -994,27 +1036,55 @@ window.addEventListener('resize', () => {
 });
 
 /* ═══════════════════════════════════════
-   TOGGLE BUTTONS
+   TOGGLE BUTTONS — Shuffle / Repeat / Heart
 ════════════════════════════════════════ */
-document.getElementById('btn-shuffle').addEventListener('click', function () { this.classList.toggle('active'); });
-document.getElementById('btn-repeat').addEventListener('click',  function () { this.classList.toggle('active'); });
-document.getElementById('btn-heart').addEventListener('click',   function () { this.classList.toggle('active'); });
+
+// ── Shuffle ──
+document.getElementById('btn-shuffle').addEventListener('click', function () {
+    shuffleMode = !shuffleMode;
+    this.classList.toggle('active', shuffleMode);
+    showToast(shuffleMode ? 'Lecture aléatoire activée' : 'Lecture aléatoire désactivée');
+});
+
+// ── Repeat ──
+document.getElementById('btn-repeat').addEventListener('click', function () {
+    repeatMode = !repeatMode;
+    this.classList.toggle('active', repeatMode);
+    showToast(repeatMode ? 'Répétition activée' : 'Répétition désactivée');
+});
+
+// ── Heart ──
+document.getElementById('btn-heart').addEventListener('click', function () {
+    this.classList.toggle('active');
+});
 
 /* ═══════════════════════════════════════
-   SEARCH CLEAR
+   SEARCH — Événements
 ════════════════════════════════════════ */
 document.getElementById('search-btn').addEventListener('click', searchMusic);
+
+// Lancer la recherche avec Entrée
 document.getElementById('search-input').addEventListener('keypress', e => {
-    if (e.key === 'Enter') searchMusic();
+    if (e.key === 'Enter') {
+        clearTimeout(searchTimeout);
+        searchMusic();
+    }
 });
+
+// Recherche automatique avec délai de 600ms après la frappe
 document.getElementById('search-input').addEventListener('input', function () {
     document.getElementById('search-clear').style.display = this.value ? 'inline-flex' : 'none';
+    clearTimeout(searchTimeout);
+    if (this.value.trim().length > 2) {
+        searchTimeout = setTimeout(searchMusic, 600);
+    }
 });
 
 function clearSearch() {
     const input = document.getElementById('search-input');
     input.value = '';
     input.focus();
+    clearTimeout(searchTimeout);
     document.getElementById('search-clear').style.display = 'none';
     document.getElementById('results').innerHTML = '';
     document.getElementById('results-placeholder').style.display = 'block';
