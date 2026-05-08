@@ -933,7 +933,7 @@ document.getElementById('modal-input').addEventListener('keydown', e => {
 ════════════════════════════════════════ */
 function showSearch() {
     currentSection = 'search';
-   document.querySelector('.sidebar').classList.remove('mobile-open'); // ← ajouter
+    document.querySelector('.sidebar')?.classList.remove('mobile-open');
     currentSection = 'search';
     document.getElementById('search-section').style.display         = 'block';
     document.getElementById('playlist-view-section').style.display  = 'none';
