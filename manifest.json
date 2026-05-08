@@ -2,7 +2,7 @@
     "name": "TeslaTube",
     "short_name": "TeslaTube",
     "description": "Votre lecteur de musique personnel",
-    "start_url": "/index.html",
+    "start_url": "./index.html",
     "display": "standalone",
     "background_color": "#000000",
     "theme_color": "#000000",
