@@ -664,14 +664,35 @@ function renderLibrary() {
 /* ── Bibliothèque mobile ── */
 function focusLibrary() {
     const sidebar = document.querySelector('.sidebar');
-    const isOpen  = sidebar.classList.toggle('mobile-open');
+    const isOpen  = sidebar.classList.contains('mobile-open');
+ 
     if (isOpen) {
+        sidebar.classList.remove('mobile-open');
+        return;
+    }
+ 
+    sidebar.classList.add('mobile-open');
+ 
+    // Re-render la bibliothèque pour s'assurer que les playlists sont à jour
+    renderLibrary();
+ 
+    // Fermer l'overlay quand on clique sur un item de playlist
+    setTimeout(() => {
         sidebar.querySelectorAll('.lib-item').forEach(item => {
             item.addEventListener('click', () => {
                 sidebar.classList.remove('mobile-open');
             }, { once: true });
         });
-    }
+    }, 50);
+ 
+    // Fermer si on clique en dehors (sur le main content)
+    const closeOnOutside = (e) => {
+        if (!sidebar.contains(e.target) && !e.target.closest('.bottom-nav')) {
+            sidebar.classList.remove('mobile-open');
+            document.removeEventListener('click', closeOnOutside);
+        }
+    };
+    setTimeout(() => document.addEventListener('click', closeOnOutside), 100);
 }
 
 function filterLib(type, btn) {
