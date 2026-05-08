@@ -1061,52 +1061,64 @@ a      { text-decoration: none; color: inherit; }
 .bottom-nav-btn:active { opacity: .6; }
 
 /* ═══════════════════════════════════════════════
-   FIX CENTRAGE PLAYLIST MOBILE
-   À ajouter après les règles @media (max-width: 639px)
-   existantes dans style.css
+   FIX DÉCALAGE PLAYLIST PENDANT LECTURE
+   À ajouter à la fin de style.css
 ═══════════════════════════════════════════════ */
  
 @media (max-width: 639px) {
  
-    /* ── Hero playlist : centré ── */
-    .pl-hero {
+    /* ── Hero : toujours centré, même pendant la lecture ── */
+    .pl-hero,
+    #pl-hero {
         flex-direction: column !important;
         align-items: center !important;
         text-align: center !important;
         padding: 24px 16px 16px !important;
         min-height: auto !important;
         gap: 16px !important;
+        /* Empêche tout redimensionnement pendant la lecture */
+        width: 100% !important;
+        box-sizing: border-box !important;
     }
  
     .pl-hero-art {
         width: 150px !important;
         height: 150px !important;
         margin: 0 auto !important;
+        flex-shrink: 0 !important;
     }
  
     .pl-hero-info {
         width: 100% !important;
         text-align: center !important;
+        min-width: 0 !important;
     }
  
-    .pl-hero-name {
+    .pl-hero-name,
+    #pl-editable-name {
         font-size: 1.6rem !important;
         text-align: center !important;
+        width: 100% !important;
     }
  
     .pl-hero-meta {
         text-align: center !important;
     }
  
-    /* ── Contrôles playlist : centrés ── */
-    .pl-controls {
+    /* ── Contrôles : toujours centrés ── */
+    .pl-controls,
+    #pl-controls {
         justify-content: center !important;
         padding: 16px 0 12px !important;
         gap: 16px !important;
+        width: 100% !important;
+        display: flex !important;
+        align-items: center !important;
     }
  
-    /* ── Liste des pistes : pleine largeur ── */
-    .pl-track-list {
+    /* ── Liste pistes : stable pendant lecture ── */
+    .pl-track-list,
+    #pl-track-list {
         width: 100% !important;
     }
  
@@ -1114,21 +1126,36 @@ a      { text-decoration: none; color: inherit; }
         grid-template-columns: 36px 1fr 56px !important;
         padding: 6px 10px !important;
         width: 100% !important;
+        box-sizing: border-box !important;
     }
  
-    /* ── Section pad de la playlist ── */
+    /* ── Colonne artiste cachée ── */
+    .pl-tr-artist-col { display: none !important; }
+    .pl-track-header  { display: none !important; }
+ 
+    /* ── Section padding ── */
     #playlist-view-section .section-pad {
         padding: 0 8px 80px !important;
     }
  
-    /* ── Masquer la colonne artiste (pas assez de place) ── */
-    .pl-tr-artist-col { display: none !important; }
-    .pl-track-header  { display: none !important; }
- 
-    /* ── Bouton "Rechercher plus" centré ── */
+    /* ── Bouton "Rechercher plus" ── */
     .pl-add-more {
         text-align: center !important;
         padding: 24px 0 0 !important;
     }
-}
  
+    /* ── Empêche le main-content de sauter ── */
+    .main-content {
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        /* Stable pendant les re-renders */
+        contain: layout style !important;
+    }
+ 
+    /* ── section playlist : pas de débordement horizontal ── */
+    #playlist-view-section {
+        width: 100% !important;
+        overflow-x: hidden !important;
+        box-sizing: border-box !important;
+    }
+}
