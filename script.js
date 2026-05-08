@@ -954,6 +954,27 @@ function clearSearch() {
     document.getElementById('results-placeholder').style.display = 'block';
 }
 
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) return; // page cachée → on ne fait rien
+    // Page redevenue visible → re-sync l'état du player
+    if (player && player.getPlayerState) {
+        const state = player.getPlayerState();
+        if (state === YT.PlayerState.PLAYING) {
+            setPlayState(true);
+        }
+    }
+});
+
+window.addEventListener('resize', () => {
+    // S'assure que le player continue après redimensionnement
+    if (player && player.getPlayerState && isPlaying) {
+        const state = player.getPlayerState();
+        if (state !== YT.PlayerState.PLAYING && state !== YT.PlayerState.BUFFERING) {
+            player.playVideo();
+        }
+    }
+});
+
 setBarFill('volume-bar', 100);
 renderQueue();
 // renderLibrary() sera appelé par le listener Firestore une fois connecté
