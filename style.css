@@ -562,7 +562,7 @@ a { text-decoration: none; }
 /* ═══════════════════════════════════════
    RESPONSIVE
 ════════════════════════════════════════ */
-
+ 
 /* ── Tablette : 640px–1023px ── */
 @media (max-width: 1023px) {
     .app {
@@ -579,76 +579,141 @@ a { text-decoration: none; }
     .nav-item span { display: none; }
     .nav-item { justify-content: center; padding: 12px; }
 }
-
+ 
 /* ── Mobile : < 640px ── */
 @media (max-width: 639px) {
+ 
+    /* ── Layout global ── */
     .app {
-        grid-template-columns: 1fr;
-        grid-template-rows: 1fr 140px;
+        grid-template-columns: 1fr !important;
+        grid-template-rows: 1fr 90px;
         padding: 0;
         gap: 0;
+        height: 100dvh; /* dynamic viewport height pour mobile */
     }
-
-    /* Sidebar cachée, remplacée par une bottom nav */
-    .sidebar { display: none; }
-
+ 
+    /* ── Sidebar complètement cachée ── */
+    .sidebar {
+        display: none !important;
+    }
+ 
+    /* ── Queue panel caché ── */
+    .queue-panel {
+        display: none !important;
+    }
+ 
+    /* ── Contenu principal ── */
     .main-content {
+        grid-column: 1;
+        grid-row: 1;
         border-radius: 0;
-        padding-bottom: 140px;
+        padding-bottom: 56px; /* place pour la bottom nav */
+        overflow-y: auto;
     }
-
-    /* Topbar simplifié */
+ 
+    /* ── Topbar ── */
     .topbar {
         flex-wrap: wrap;
-        padding: 10px 12px;
+        padding: 10px 12px 8px;
         gap: 8px;
+        background: rgba(0,0,0,.9);
+        backdrop-filter: blur(12px);
     }
-    .topbar-nav { display: none; }
-    .search-wrap { max-width: 100%; order: 3; flex-basis: 100%; }
-    #search-clear { right: 90px; }
-
-    /* Player bar compact */
+    .topbar-nav    { display: none; }
+    .topbar-right  { display: none; }
+ 
+    /* Barre de recherche pleine largeur */
+    .search-wrap {
+        max-width: 100%;
+        width: 100%;
+        flex: unset;
+        order: 1;
+    }
+    #search-input {
+        padding-right: 110px;
+        font-size: .9rem;
+    }
+    #search-clear { right: 88px; }
+ 
+    /* ── Player bar compact ── */
     .player-bar {
+        grid-column: 1;
+        grid-row: 2;
         flex-direction: column;
-        height: 140px;
-        padding: 8px 12px 0;
-        gap: 4px;
+        justify-content: center;
+        height: 90px;
+        padding: 6px 16px 4px;
+        gap: 2px;
     }
-    .player-left { max-width: 100%; width: 100%; }
-    .player-center { width: 100%; max-width: 100%; }
+ 
+    /* Ligne du haut : thumb + infos + cœur */
+    .player-left {
+        max-width: 100%;
+        width: 100%;
+        flex: 0 0 auto;
+    }
+    .player-thumb {
+        width: 36px;
+        height: 36px;
+    }
+    .player-track-title  { font-size: .8rem; }
+    .player-track-artist { font-size: .68rem; }
+ 
+    /* Centre : contrôles + barre de progression */
+    .player-center {
+        width: 100%;
+        max-width: 100%;
+        flex: 0 0 auto;
+        gap: 2px;
+    }
+ 
+    /* Masquer shuffle et repeat sur mobile */
+    #btn-shuffle, #btn-repeat { display: none; }
+ 
+    /* Volume caché */
     .player-right { display: none; }
-
-    /* Grille résultats : 2 colonnes */
+ 
+    /* ── Grille résultats : 2 colonnes ── */
     .music-grid {
         grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
+        gap: 10px;
     }
-    .section-pad { padding: 12px 12px 60px; }
-
-    /* Playlist hero compact */
+    .track-card { padding: 10px; }
+    .section-pad { padding: 10px 10px 70px; }
+ 
+    /* ── Playlist hero compact ── */
     .pl-hero {
         flex-direction: column;
         align-items: center;
-        padding: 24px 16px 16px;
+        padding: 20px 16px 16px;
         min-height: auto;
+        gap: 16px;
     }
-    .pl-hero-art { width: 140px; height: 140px; }
-    .pl-hero-name { font-size: 1.6rem; }
-
-    /* Colonnes artiste cachées dans la table */
-    .pl-tr-artist-col,
-    .pl-track-header .pl-th-artist { display: none; }
+    .pl-hero-art  { width: 130px; height: 130px; }
+    .pl-hero-info { text-align: center; }
+    .pl-hero-name { font-size: 1.5rem; }
+ 
+    /* ── Table playlist : colonne artiste cachée ── */
+    .pl-tr-artist-col { display: none; }
+    .pl-track-header  { display: none; }
     .pl-track-row {
         grid-template-columns: 36px 1fr 56px;
+        padding: 6px 10px;
     }
-
-    /* Bottom navigation bar */
-    .bottom-nav {
-        display: flex;
+ 
+    /* ── Bottom nav visible ── */
+    .bottom-nav { display: flex; }
+ 
+    /* ── Modals plein écran ── */
+    .modal-box {
+        width: 95vw;
+        padding: 20px;
     }
 }
-
-/* Cachée par défaut (desktop) */
+ 
+/* ═══════════════════════════════════════
+   BOTTOM NAV
+════════════════════════════════════════ */
 .bottom-nav {
     display: none;
     position: fixed;
@@ -656,16 +721,26 @@ a { text-decoration: none; }
     height: 56px;
     background: #181818;
     border-top: 1px solid #2a2a2a;
-    z-index: 200;
+    z-index: 500;
     justify-content: space-around;
     align-items: center;
+    padding-bottom: env(safe-area-inset-bottom); /* iPhone notch */
 }
+ 
 .bottom-nav-btn {
-    display: flex; flex-direction: column; align-items: center;
-    gap: 3px; background: none; border: none;
-    color: var(--text-sub); font-size: .65rem; font-weight: 700;
-    padding: 6px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    background: none;
+    border: none;
+    color: var(--text-sub);
+    font-size: .6rem;
+    font-weight: 700;
+    padding: 6px 20px;
     transition: color .15s;
+    letter-spacing: .02em;
 }
-.bottom-nav-btn svg { width: 22px; height: 22px; }
+.bottom-nav-btn svg   { width: 22px; height: 22px; }
 .bottom-nav-btn.active { color: var(--text-main); }
+.bottom-nav-btn:active { opacity: .7; }
