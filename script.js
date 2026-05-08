@@ -23,27 +23,26 @@ const db   = firebase.firestore();
 
 // ── State ──
 let player;
-let queue             = JSON.parse(localStorage.getItem('teslatubeQueue')) || [];
-let playlists         = [];
-let historyStack      = [];
+let queue                = JSON.parse(localStorage.getItem('teslatubeQueue')) || [];
+let playlists            = [];
+let historyStack         = [];
 let progressInterval;
-let isPlaying         = false;
-let isMuted           = false;
-let lastVolume        = 100;
-let queueVisible      = true;
-let currentTrack      = null;
-let currentSection    = 'search';   // 'search' | 'playlist:<id>'
-let modalMode         = null;       // { action: 'create'|'rename', playlistId? }
-let openDropdownTrack = null;
-let currentUserId     = null;
-let unsubscribePlaylists = null;    // Firestore real-time listener cleanup
+let isPlaying            = false;
+let isMuted              = false;
+let lastVolume           = 100;
+let queueVisible         = true;
+let currentTrack         = null;
+let currentSection       = 'search';
+let modalMode            = null;
+let openDropdownTrack    = null;
+let currentUserId        = null;
+let unsubscribePlaylists = null;
 
 // ── Palette ──
 const COLORS = ['#e91429','#503750','#0d73ec','#148a08','#e8115b','#27856a','#8d67ab','#1e3264','#f59b23','#0e6251'];
 
 /* ═══════════════════════════════════════
-   UTILS  (déclarées en premier pour être
-   disponibles partout dans le fichier)
+   UTILS
 ════════════════════════════════════════ */
 function fmtTime(sec) {
     const m = Math.floor(sec / 60), s = Math.floor(sec % 60);
@@ -65,6 +64,13 @@ function parseISO8601Duration(iso) {
     const min = parseInt(m[2] || 0);
     const sec = parseInt(m[3] || 0);
     return fmtTime(h * 3600 + min * 60 + sec);
+}
+
+function formatViews(n) {
+    n = parseInt(n) || 0;
+    if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M vues';
+    if (n >= 1_000)     return (n / 1_000).toFixed(0) + 'K vues';
+    return n + ' vues';
 }
 
 /* ═══════════════════════════════════════
@@ -89,6 +95,7 @@ async function login() {
     const email = document.getElementById('auth-email').value.trim();
     const pass  = document.getElementById('auth-pass').value;
     const err   = document.getElementById('auth-error');
+    err.textContent = '';
     try {
         await auth.signInWithEmailAndPassword(email, pass);
     } catch (e) {
@@ -100,6 +107,7 @@ async function register() {
     const email = document.getElementById('auth-email').value.trim();
     const pass  = document.getElementById('auth-pass').value;
     const err   = document.getElementById('auth-error');
+    err.textContent = '';
     if (pass.length < 6) { err.textContent = 'Mot de passe trop court (6 caractères min).'; return; }
     try {
         await auth.createUserWithEmailAndPassword(email, pass);
@@ -186,8 +194,8 @@ function onYouTubeIframeAPIReady() {
             playsinline:    1,
             origin:         window.location.origin,
             enablejsapi:    1,
-            iv_load_policy: 3,   // pas d'annotations
-            rel:            0    // pas de suggestions
+            iv_load_policy: 3,
+            rel:            0
         },
         events: {
             onReady:       () => setVolume(100),
@@ -197,7 +205,6 @@ function onYouTubeIframeAPIReady() {
     });
 }
 
-// Gère les erreurs silencieusement
 function onPlayerError(event) {
     console.warn('[Player] Erreur YouTube :', event.data);
     setPlayState(false);
@@ -232,14 +239,18 @@ async function searchMusic() {
 
         const items = data.items || [];
 
-        // ── Récupérer les durées en une seule requête ──
+        // Récupérer durées + stats en une seule requête
         const ids        = items.map(i => i.id.videoId).join(',');
-        const detailsUrl = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${ids}&key=${YOUTUBE_API_KEY}`;
+        const detailsUrl = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails,statistics&id=${ids}&key=${YOUTUBE_API_KEY}`;
         const detailsRes = await fetch(detailsUrl);
         const details    = await detailsRes.json();
-        const durMap     = {};
+
+        const durMap = {};
         (details.items || []).forEach(v => {
-            durMap[v.id] = parseISO8601Duration(v.contentDetails.duration);
+            durMap[v.id] = {
+                duration: parseISO8601Duration(v.contentDetails.duration),
+                views:    formatViews(v.statistics?.viewCount)
+            };
         });
 
         renderResults(items, durMap);
@@ -252,14 +263,18 @@ async function searchMusic() {
 function renderResults(items, durMap = {}) {
     const container = document.getElementById('results');
     container.innerHTML = '';
+
     items.forEach(item => {
+        const info = durMap[item.id.videoId] || {};
         const t = {
             id:       item.id.videoId,
             title:    item.snippet.title,
             artist:   item.snippet.channelTitle,
-            img:      item.snippet.thumbnails.medium.url,
-            duration: durMap[item.id.videoId] || '--:--'
+            img:      item.snippet.thumbnails.high?.url || item.snippet.thumbnails.medium.url,
+            duration: info.duration || '--:--',
+            views:    info.views    || ''
         };
+
         const div = document.createElement('div');
         div.className = 'track-card';
         div.innerHTML = `
@@ -278,7 +293,6 @@ function renderResults(items, durMap = {}) {
         div.querySelector('.card-options-btn').addEventListener('click', e => { e.stopPropagation(); openTrackDropdown(e, t); });
         container.appendChild(div);
     });
-   updateMediaSession(t);
 }
 
 /* ═══════════════════════════════════════
@@ -295,6 +309,7 @@ function playTrack(t) {
     progressInterval = setInterval(updateProgress, 500);
     document.title = `${t.title} — Teslatube`;
     renderCurrentPlaylistHighlight();
+    updateMediaSession(t);
 }
 
 function updatePlayerBar(t) {
@@ -304,10 +319,10 @@ function updatePlayerBar(t) {
     const pholder = document.getElementById('thumb-placeholder');
     if (t.img) {
         imgEl.src = t.img;
-        imgEl.style.display = 'block';
+        imgEl.style.display   = 'block';
         pholder.style.display = 'none';
     } else {
-        imgEl.style.display = 'none';
+        imgEl.style.display   = 'none';
         pholder.style.display = 'flex';
     }
 }
@@ -342,6 +357,23 @@ function prevTrack() {
     } else if (player && player.seekTo) {
         player.seekTo(0, true);
     }
+}
+
+/* ═══════════════════════════════════════
+   MEDIA SESSION API (lock screen / notifications)
+════════════════════════════════════════ */
+function updateMediaSession(t) {
+    if (!('mediaSession' in navigator)) return;
+    navigator.mediaSession.metadata = new MediaMetadata({
+        title:   t.title,
+        artist:  t.artist,
+        album:   'TeslaTube',
+        artwork: [{ src: t.img, sizes: '320x180', type: 'image/jpeg' }]
+    });
+    navigator.mediaSession.setActionHandler('play',          () => { if (player) player.playVideo(); });
+    navigator.mediaSession.setActionHandler('pause',         () => { if (player) player.pauseVideo(); });
+    navigator.mediaSession.setActionHandler('nexttrack',     () => nextTrack());
+    navigator.mediaSession.setActionHandler('previoustrack', () => prevTrack());
 }
 
 /* ═══════════════════════════════════════
@@ -386,7 +418,7 @@ function toggleMute() {
         setVolume(lastVolume || 100);
     } else {
         lastVolume = +document.getElementById('volume-bar').value || 100;
-        isMuted = true;
+        isMuted    = true;
         setVolume(0);
     }
     syncVolIcon();
@@ -422,7 +454,7 @@ function setBarFill(id, pct) {
 });
 
 /* ═══════════════════════════════════════
-   QUEUE  (localStorage — device-local)
+   QUEUE
 ════════════════════════════════════════ */
 function addToQueue(t) {
     queue.push(t);
@@ -449,6 +481,7 @@ function renderQueue() {
         ? "File d'attente vide"
         : `${n} piste${n > 1 ? 's' : ''} dans la file`;
     container.innerHTML = '';
+
     queue.forEach((t, i) => {
         const div = document.createElement('div');
         div.className = 'queue-item';
@@ -492,17 +525,14 @@ function toggleQueue() {
 }
 
 /* ═══════════════════════════════════════
-   PLAYLIST CRUD  (Firestore)
+   PLAYLIST CRUD
 ════════════════════════════════════════ */
 async function createPlaylist(name) {
     const id    = 'pl_' + Date.now();
     const color = COLORS[playlists.length % COLORS.length];
     const pl    = { id, name, color, tracks: [], createdAt: Date.now() };
-
-    // Mise à jour locale optimiste
     playlists.push(pl);
     renderLibrary();
-
     await savePlaylistToFirestore(pl);
     showToast(`Playlist « ${name} » créée`);
     return id;
@@ -596,8 +626,8 @@ function filterLib(type, btn) {
 ════════════════════════════════════════ */
 function openPlaylistView(id) {
     currentSection = `playlist:${id}`;
-    document.getElementById('search-section').style.display          = 'none';
-    document.getElementById('playlist-view-section').style.display   = 'block';
+    document.getElementById('search-section').style.display         = 'none';
+    document.getElementById('playlist-view-section').style.display  = 'block';
     const pl = playlists.find(p => p.id === id);
     if (pl) {
         document.querySelector('.main-content').style.background =
@@ -703,11 +733,6 @@ function renderCurrentPlaylistHighlight() {
         const t = pl.tracks[i];
         row.classList.toggle('playing', !!(t && currentTrack && t.id === currentTrack.id));
     });
-}
-
-function setActiveNav(btn) {
-    document.querySelectorAll('.bottom-nav-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
 }
 
 function playPlaylist(id) {
@@ -904,6 +929,11 @@ function focusSearch() { showSearch(); document.getElementById('search-input').f
 function goBack()      { history.back(); }
 function goForward()   { history.forward(); }
 
+function setActiveNav(btn) {
+    document.querySelectorAll('.bottom-nav-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+}
+
 /* ═══════════════════════════════════════
    TOAST
 ════════════════════════════════════════ */
@@ -927,6 +957,26 @@ document.addEventListener('keydown', e => {
 });
 
 /* ═══════════════════════════════════════
+   VISIBILITY / RESIZE
+════════════════════════════════════════ */
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) return;
+    if (player && player.getPlayerState) {
+        const state = player.getPlayerState();
+        if (state === YT.PlayerState.PLAYING) setPlayState(true);
+    }
+});
+
+window.addEventListener('resize', () => {
+    if (player && player.getPlayerState && isPlaying) {
+        const state = player.getPlayerState();
+        if (state !== YT.PlayerState.PLAYING && state !== YT.PlayerState.BUFFERING) {
+            player.playVideo();
+        }
+    }
+});
+
+/* ═══════════════════════════════════════
    TOGGLE BUTTONS
 ════════════════════════════════════════ */
 document.getElementById('btn-shuffle').addEventListener('click', function () { this.classList.toggle('active'); });
@@ -934,13 +984,12 @@ document.getElementById('btn-repeat').addEventListener('click',  function () { t
 document.getElementById('btn-heart').addEventListener('click',   function () { this.classList.toggle('active'); });
 
 /* ═══════════════════════════════════════
-   INIT
+   SEARCH CLEAR
 ════════════════════════════════════════ */
 document.getElementById('search-btn').addEventListener('click', searchMusic);
 document.getElementById('search-input').addEventListener('keypress', e => {
     if (e.key === 'Enter') searchMusic();
 });
-
 document.getElementById('search-input').addEventListener('input', function () {
     document.getElementById('search-clear').style.display = this.value ? 'inline-flex' : 'none';
 });
@@ -954,27 +1003,9 @@ function clearSearch() {
     document.getElementById('results-placeholder').style.display = 'block';
 }
 
-document.addEventListener('visibilitychange', () => {
-    if (document.hidden) return; // page cachée → on ne fait rien
-    // Page redevenue visible → re-sync l'état du player
-    if (player && player.getPlayerState) {
-        const state = player.getPlayerState();
-        if (state === YT.PlayerState.PLAYING) {
-            setPlayState(true);
-        }
-    }
-});
-
-window.addEventListener('resize', () => {
-    // S'assure que le player continue après redimensionnement
-    if (player && player.getPlayerState && isPlaying) {
-        const state = player.getPlayerState();
-        if (state !== YT.PlayerState.PLAYING && state !== YT.PlayerState.BUFFERING) {
-            player.playVideo();
-        }
-    }
-});
-
+/* ═══════════════════════════════════════
+   INIT
+════════════════════════════════════════ */
 setBarFill('volume-bar', 100);
 renderQueue();
-// renderLibrary() sera appelé par le listener Firestore une fois connecté
+// renderLibrary() appelé automatiquement par le listener Firestore
