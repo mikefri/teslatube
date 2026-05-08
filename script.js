@@ -340,6 +340,8 @@ function playTrack(t) {
     clearInterval(progressInterval);
     progressInterval = setInterval(updateProgress, 500);
     document.title = `${t.title} — Teslatube`;
+ 
+    // Uniquement highlight, pas de re-render complet
     renderCurrentPlaylistHighlight();
     updateMediaSession(t);
 }
@@ -808,10 +810,19 @@ function renderCurrentPlaylistHighlight() {
     const id = currentSection.split(':')[1];
     const pl = playlists.find(p => p.id === id);
     if (!pl) return;
+ 
+    // ── Juste mettre à jour les classes, sans re-render ──
     document.querySelectorAll('.pl-track-row').forEach((row, i) => {
         const t = pl.tracks[i];
-        row.classList.toggle('playing', !!(t && currentTrack && t.id === currentTrack.id));
+        const isPlaying = !!(t && currentTrack && t.id === currentTrack.id);
+        row.classList.toggle('playing', isPlaying);
     });
+ 
+    // ── Mettre à jour le nombre de pistes dans le hero sans toucher au layout ──
+    const metaEl = document.querySelector('.pl-hero-meta');
+    if (metaEl) {
+        metaEl.innerHTML = `<strong>${pl.tracks.length}</strong> piste${pl.tracks.length !== 1 ? 's' : ''}`;
+    }
 }
 
 function playPlaylist(id) {
