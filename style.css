@@ -1159,3 +1159,88 @@ a      { text-decoration: none; color: inherit; }
         box-sizing: border-box !important;
     }
 }
+/* ═══════════════════════════════════════════════
+   FIX PISTE ACTIVE + RECHERCHE MOBILE
+   À ajouter à la fin de style.css
+═══════════════════════════════════════════════ */
+ 
+@media (max-width: 639px) {
+ 
+    /* ── Piste en cours de lecture : garder le grid ── */
+    .pl-track-row {
+        display: grid !important;
+        grid-template-columns: 36px 1fr 56px !important;
+        padding: 6px 10px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        align-items: center !important;
+    }
+ 
+    /* Numéro / barres animées : bien dans la 1ère cellule */
+    .pl-tr-num {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 36px !important;
+        flex-shrink: 0 !important;
+    }
+ 
+    /* Barres d'animation visibles sur la piste active */
+    .pl-track-row.playing .pl-tr-bars {
+        display: flex !important;
+        justify-content: center !important;
+        align-items: flex-end !important;
+    }
+ 
+    .pl-track-row.playing .pl-tr-num > span:first-child {
+        display: none !important;
+    }
+ 
+    /* Info piste : min-width 0 pour éviter le débordement */
+    .pl-tr-info {
+        min-width: 0 !important;
+        overflow: hidden !important;
+    }
+ 
+    .pl-tr-text {
+        min-width: 0 !important;
+        overflow: hidden !important;
+    }
+ 
+    .pl-tr-title,
+    .pl-tr-artist {
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        display: block !important;
+    }
+ 
+    /* Durée + bouton supprimer */
+    .pl-tr-dur-wrap {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-end !important;
+        gap: 4px !important;
+        width: 56px !important;
+        flex-shrink: 0 !important;
+    }
+ 
+    /* ── Champ de recherche : placeholder visible ── */
+    /* L'email s'affiche car autocomplete remplit le champ.
+       On force le placeholder visible et on stylise mieux */
+    #search-input {
+        /* Empêche l'autofill de colorier le fond */
+        -webkit-text-fill-color: #111 !important;
+        caret-color: #111 !important;
+    }
+ 
+    /* Hack : cacher la valeur autofill visuellement
+       (l'email vient de l'autocomplete du navigateur) */
+    #search-input:-webkit-autofill,
+    #search-input:-webkit-autofill:focus {
+        -webkit-text-fill-color: #111 !important;
+        -webkit-box-shadow: 0 0 0px 1000px #fff inset !important;
+        transition: background-color 5000s ease-in-out 0s;
+    }
+}
+ 
