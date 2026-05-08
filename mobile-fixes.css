@@ -1,0 +1,153 @@
+/* ═══════════════════════════════════════════════
+   MOBILE RESPONSIVE FIXES — à ajouter à la fin de style.css
+   Problèmes résolus :
+   1. Vignettes trop grandes en recherche mobile
+   2. Playlists inaccessibles en responsive
+═══════════════════════════════════════════════ */
+
+@media (max-width: 639px) {
+
+    /* ── Grille de résultats : 3 colonnes au lieu de 2 ── */
+    .music-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+    }
+
+    /* ── Cartes plus compactes ── */
+    .track-card {
+        padding: 7px;
+    }
+
+    .track-card h4 {
+        font-size: .72rem;
+        margin-bottom: 2px;
+    }
+
+    .track-card p {
+        font-size: .65rem;
+    }
+
+    /* ── Bouton play sur les vignettes : plus petit ── */
+    .card-play-btn {
+        width: 32px;
+        height: 32px;
+        bottom: 6px;
+        right: 6px;
+    }
+
+    /* ── Bouton options vignette : plus petit ── */
+    .card-options-btn {
+        width: 22px;
+        height: 22px;
+        font-size: .7rem;
+        top: 6px;
+        right: 6px;
+    }
+
+    /* ── Section padding réduit ── */
+    .section-pad {
+        padding: 8px 8px 16px;
+    }
+
+    /* ════════════════════════════════════════════
+       SIDEBAR MOBILE OVERLAY — corrections
+       La sidebar ouverte via le bouton "Bibliothèque"
+       doit afficher correctement les playlists
+    ════════════════════════════════════════════ */
+
+    .sidebar.mobile-open {
+        /* Recouvre tout l'écran sauf player + bottom nav */
+        bottom: calc(90px + var(--nav-h));
+        z-index: 500;
+        padding: 0 0 12px;
+        background: var(--bg-surface);
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Logo visible dans l'overlay */
+    .sidebar.mobile-open .logo span {
+        display: inline !important;
+    }
+
+    .sidebar.mobile-open .logo {
+        padding: 14px 16px 12px;
+        justify-content: flex-start;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 4px;
+    }
+
+    /* Nav items visibles dans l'overlay */
+    .sidebar.mobile-open .nav-item span {
+        display: inline !important;
+    }
+
+    .sidebar.mobile-open .nav-item {
+        justify-content: flex-start;
+        padding: 10px 16px;
+    }
+
+    /* Bibliothèque : header + filtres + items */
+    .sidebar.mobile-open .sidebar-library {
+        flex: 1;
+        min-height: 200px;
+    }
+
+    .sidebar.mobile-open .library-header span,
+    .sidebar.mobile-open .lib-filters {
+        display: flex !important;
+    }
+
+    .sidebar.mobile-open .lib-item {
+        justify-content: flex-start !important;
+        padding: 8px 16px !important;
+    }
+
+    .sidebar.mobile-open .lib-item-thumb {
+        width: 48px !important;
+        height: 48px !important;
+    }
+
+    .sidebar.mobile-open .lib-item-info,
+    .sidebar.mobile-open .lib-item-more {
+        display: flex !important;
+    }
+
+    /* Fermer l'overlay en cliquant sur un item */
+    .sidebar.mobile-open .lib-item {
+        cursor: pointer;
+    }
+
+    /* Bouton déconnexion visible */
+    .sidebar.mobile-open .sidebar-nav button {
+        display: flex !important;
+        width: 100%;
+        padding: 10px 16px;
+        font-size: .83rem;
+        font-weight: 600;
+        color: var(--text-sub);
+    }
+
+    /* ── Zone vide bibliothèque ── */
+    .sidebar.mobile-open .lib-empty {
+        display: block !important;
+    }
+
+    /* ── Topbar : afficher seulement search + petit bouton bibliothèque ── */
+    .topbar {
+        padding: 8px 10px;
+    }
+
+    /* ── Toast : au-dessus de la nav du bas ── */
+    .toast {
+        bottom: calc(var(--nav-h) + 100px);
+    }
+}
+
+/* ── Très petits écrans (360px et moins) : 2 colonnes ── */
+@media (max-width: 400px) {
+    .music-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 6px;
+    }
+}
