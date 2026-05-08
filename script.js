@@ -616,6 +616,21 @@ function renderLibrary() {
     });
 }
 
+
+/* ── Bibliothèque mobile ── */
+function focusLibrary() {
+    const sidebar = document.querySelector('.sidebar');
+    const isOpen  = sidebar.classList.toggle('mobile-open');
+    // Fermer automatiquement quand on clique sur une playlist
+    if (isOpen) {
+        sidebar.querySelectorAll('.lib-item').forEach(item => {
+            item.addEventListener('click', () => {
+                sidebar.classList.remove('mobile-open');
+            }, { once: true });
+        });
+    }
+}
+
 function filterLib(type, btn) {
     document.querySelectorAll('.lib-chip').forEach(c => c.classList.remove('active'));
     btn.classList.add('active');
@@ -917,6 +932,8 @@ document.getElementById('modal-input').addEventListener('keydown', e => {
    NAVIGATION
 ════════════════════════════════════════ */
 function showSearch() {
+    currentSection = 'search';
+   document.querySelector('.sidebar').classList.remove('mobile-open'); // ← ajouter
     currentSection = 'search';
     document.getElementById('search-section').style.display         = 'block';
     document.getElementById('playlist-view-section').style.display  = 'none';
