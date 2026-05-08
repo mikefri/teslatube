@@ -1,153 +1,161 @@
 /* ═══════════════════════════════════════════════
-   MOBILE RESPONSIVE FIXES — à ajouter à la fin de style.css
-   Problèmes résolus :
-   1. Vignettes trop grandes en recherche mobile
-   2. Playlists inaccessibles en responsive
+   MOBILE FIXES v2 — à coller à la fin de style.css
 ═══════════════════════════════════════════════ */
 
 @media (max-width: 639px) {
 
-    /* ── Grille de résultats : 3 colonnes au lieu de 2 ── */
-    .music-grid {
-        grid-template-columns: repeat(3, 1fr);
-        gap: 8px;
+    /* ── 1. BOTTOM NAV : toujours visible ── */
+    .bottom-nav {
+        display: flex !important;
+        position: fixed;
+        bottom: 0; left: 0; right: 0;
+        height: var(--nav-h);
+        background: rgba(14,14,14,.98);
+        border-top: 1px solid var(--border);
+        backdrop-filter: blur(20px);
+        z-index: 600;
+        justify-content: space-around;
+        align-items: center;
     }
 
-    /* ── Cartes plus compactes ── */
-    .track-card {
-        padding: 7px;
+    /* ── 2. APP : hauteur = 100dvh - bottom nav ── */
+    .app {
+        height: calc(100dvh - var(--nav-h)) !important;
+        grid-template-columns: 1fr !important;
+        grid-template-rows: 1fr 90px;
+        padding: 0;
+        gap: 0;
     }
 
-    .track-card h4 {
-        font-size: .72rem;
-        margin-bottom: 2px;
+    /* ── 3. SIDEBAR OVERLAY ── */
+    .sidebar {
+        display: none !important;
     }
-
-    .track-card p {
-        font-size: .65rem;
-    }
-
-    /* ── Bouton play sur les vignettes : plus petit ── */
-    .card-play-btn {
-        width: 32px;
-        height: 32px;
-        bottom: 6px;
-        right: 6px;
-    }
-
-    /* ── Bouton options vignette : plus petit ── */
-    .card-options-btn {
-        width: 22px;
-        height: 22px;
-        font-size: .7rem;
-        top: 6px;
-        right: 6px;
-    }
-
-    /* ── Section padding réduit ── */
-    .section-pad {
-        padding: 8px 8px 16px;
-    }
-
-    /* ════════════════════════════════════════════
-       SIDEBAR MOBILE OVERLAY — corrections
-       La sidebar ouverte via le bouton "Bibliothèque"
-       doit afficher correctement les playlists
-    ════════════════════════════════════════════ */
 
     .sidebar.mobile-open {
-        /* Recouvre tout l'écran sauf player + bottom nav */
-        bottom: calc(90px + var(--nav-h));
-        z-index: 500;
-        padding: 0 0 12px;
-        background: var(--bg-surface);
+        display: flex !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: calc(90px + var(--nav-h)) !important;
+        width: 100% !important;
+        z-index: 700 !important;
+        background: var(--bg-surface) !important;
+        border-radius: 0 !important;
+        flex-direction: column;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
+        animation: slideUp .2s ease both;
     }
 
-    /* Logo visible dans l'overlay */
-    .sidebar.mobile-open .logo span {
-        display: inline !important;
+    @keyframes slideUp {
+        from { opacity: 0; transform: translateY(12px); }
+        to   { opacity: 1; transform: translateY(0); }
     }
 
-    .sidebar.mobile-open .logo {
-        padding: 14px 16px 12px;
-        justify-content: flex-start;
-        border-bottom: 1px solid var(--border);
-        margin-bottom: 4px;
-    }
+    /* Tout afficher dans l'overlay */
+    .sidebar.mobile-open .logo span             { display: inline !important; }
+    .sidebar.mobile-open .logo                  { justify-content: flex-start !important; padding: 14px 16px 12px !important; border-bottom: 1px solid var(--border); }
+    .sidebar.mobile-open .nav-item span         { display: inline !important; }
+    .sidebar.mobile-open .nav-item              { justify-content: flex-start !important; padding: 10px 16px !important; }
+    .sidebar.mobile-open .lib-filters           { display: flex !important; }
+    .sidebar.mobile-open .library-header span   { display: flex !important; }
+    .sidebar.mobile-open .lib-item              { justify-content: flex-start !important; padding: 8px 16px !important; }
+    .sidebar.mobile-open .lib-item-thumb        { width: 52px !important; height: 52px !important; }
+    .sidebar.mobile-open .lib-item-info         { display: flex !important; }
+    .sidebar.mobile-open .lib-item-more         { display: flex !important; }
+    .sidebar.mobile-open .lib-empty             { display: block !important; }
+    .sidebar.mobile-open .sidebar-top           { flex-shrink: 0; }
+    .sidebar.mobile-open .sidebar-library       { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+    .sidebar.mobile-open .lib-list              { flex: 1; overflow-y: auto; }
 
-    /* Nav items visibles dans l'overlay */
-    .sidebar.mobile-open .nav-item span {
-        display: inline !important;
-    }
-
-    .sidebar.mobile-open .nav-item {
-        justify-content: flex-start;
-        padding: 10px 16px;
-    }
-
-    /* Bibliothèque : header + filtres + items */
-    .sidebar.mobile-open .sidebar-library {
-        flex: 1;
-        min-height: 200px;
-    }
-
-    .sidebar.mobile-open .library-header span,
-    .sidebar.mobile-open .lib-filters {
-        display: flex !important;
-    }
-
-    .sidebar.mobile-open .lib-item {
-        justify-content: flex-start !important;
-        padding: 8px 16px !important;
-    }
-
-    .sidebar.mobile-open .lib-item-thumb {
-        width: 48px !important;
-        height: 48px !important;
-    }
-
-    .sidebar.mobile-open .lib-item-info,
-    .sidebar.mobile-open .lib-item-more {
-        display: flex !important;
-    }
-
-    /* Fermer l'overlay en cliquant sur un item */
-    .sidebar.mobile-open .lib-item {
-        cursor: pointer;
-    }
-
-    /* Bouton déconnexion visible */
+    /* ── 4. Bouton déconnexion visible dans l'overlay ── */
     .sidebar.mobile-open .sidebar-nav button {
         display: flex !important;
+        align-items: center;
         width: 100%;
         padding: 10px 16px;
         font-size: .83rem;
         font-weight: 600;
         color: var(--text-sub);
+        text-align: left;
     }
 
-    /* ── Zone vide bibliothèque ── */
-    .sidebar.mobile-open .lib-empty {
-        display: block !important;
+    /* ── 5. QUEUE et MAIN ── */
+    .queue-panel { display: none !important; }
+
+    .main-content {
+        grid-column: 1;
+        grid-row: 1;
+        border-radius: 0;
+        border: none;
+        overflow-y: auto;
     }
 
-    /* ── Topbar : afficher seulement search + petit bouton bibliothèque ── */
+    /* ── 6. TOPBAR ── */
     .topbar {
+        flex-wrap: wrap;
         padding: 8px 10px;
+        gap: 8px;
+        background: rgba(0,0,0,.92);
+    }
+    .topbar-nav, .topbar-right { display: none !important; }
+    .search-wrap {
+        max-width: 100%;
+        width: 100%;
+        flex: unset;
+        order: 1;
     }
 
-    /* ── Toast : au-dessus de la nav du bas ── */
-    .toast {
-        bottom: calc(var(--nav-h) + 100px);
+    /* ── 7. PLAYER BAR ── */
+    .player-bar {
+        grid-column: 1;
+        grid-row: 2;
+        flex-direction: column;
+        justify-content: center;
+        height: 90px;
+        padding: 6px 16px 4px;
+        gap: 4px;
     }
+    .player-left         { max-width: 100%; width: 100%; flex: 0 0 auto; }
+    .player-thumb        { width: 36px; height: 36px; }
+    .player-track-title  { font-size: .8rem; }
+    .player-track-artist { font-size: .68rem; }
+    .player-center       { width: 100%; max-width: 100%; flex: 0 0 auto; gap: 2px; }
+    #btn-shuffle,
+    #btn-repeat          { display: none !important; }
+    .player-right        { display: none !important; }
+
+    /* ── 8. GRILLE RÉSULTATS : 3 colonnes ── */
+    .music-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+    }
+    .track-card        { padding: 7px; }
+    .track-card h4     { font-size: .72rem; margin-bottom: 2px; }
+    .track-card p      { font-size: .65rem; }
+    .card-play-btn     { width: 32px; height: 32px; bottom: 6px; right: 6px; }
+    .card-options-btn  { width: 22px; height: 22px; font-size: .7rem; top: 6px; right: 6px; }
+    .section-pad       { padding: 8px 8px 16px; }
+
+    /* ── 9. TOAST au-dessus de la nav ── */
+    .toast { bottom: calc(var(--nav-h) + 100px); }
+
+    /* ── 10. PLAYLIST VIEW ── */
+    .pl-hero              { flex-direction: column; align-items: center; padding: 24px 16px 16px; min-height: auto; gap: 16px; }
+    .pl-hero-art          { width: 140px; height: 140px; }
+    .pl-hero-info         { text-align: center; }
+    .pl-hero-name         { font-size: 1.5rem; }
+    .pl-tr-artist-col     { display: none; }
+    .pl-track-header      { display: none; }
+    .pl-track-row         { grid-template-columns: 36px 1fr 56px; padding: 6px 10px; }
+
+    /* ── 11. MODAL ── */
+    .modal-box { width: 95vw; padding: 22px 18px; }
 }
 
-/* ── Très petits écrans (360px et moins) : 2 colonnes ── */
+/* Très petits écrans */
 @media (max-width: 400px) {
-    .music-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 6px;
-    }
+    .music-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
 }
