@@ -189,6 +189,10 @@
                 <button class="ctrl-icon" id="btn-heart" title="Aimer">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12.442 19.91c-.338.35-.88.35-1.217 0C9.501 18.017 2 12.83 2 8.5 2 5.42 4.42 3 7.5 3c1.49 0 2.87.61 3.872 1.688L12 5.4l.628-.712A5.496 5.496 0 0116.5 3C19.58 3 22 5.42 22 8.5c0 4.33-7.501 9.516-9.225 11.286l-.333.124z"/></svg>
                 </button>
+                <div id="sleep-badge">
+    <svg viewBox="0 0 24 24" width="10" height="10" fill="currentColor"><path d="M12.0488 2.0127A10 10 0 1021.988 11.951 8 8 0 0112.0488 2.013z"/></svg>
+    <span id="sleep-badge-time"></span>
+</div>
             </div>
         </div>
         <div class="player-center">
@@ -209,6 +213,29 @@
             </div>
         </div>
         <div class="player-right">
+<div class="sleep-timer-wrap">
+    <button class="ctrl-icon" id="btn-sleep" title="Timer de sommeil" onclick="toggleSleepDropdown()">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12.0488 2.0127A10 10 0 1021.988 11.951 8 8 0 0112.0488 2.013z"/></svg>
+    </button>
+    <div class="sleep-dropdown" id="sleep-dropdown">
+        <div class="sleep-dd-title">Timer de sommeil</div>
+        <button class="sleep-dd-item" id="sdi-15" onclick="setSleepTimer(15)">
+            <span>15 minutes</span><span class="sleep-countdown" id="sc-15"></span>
+        </button>
+        <button class="sleep-dd-item" id="sdi-30" onclick="setSleepTimer(30)">
+            <span>30 minutes</span><span class="sleep-countdown" id="sc-30"></span>
+        </button>
+        <button class="sleep-dd-item" id="sdi-60" onclick="setSleepTimer(60)">
+            <span>1 heure</span><span class="sleep-countdown" id="sc-60"></span>
+        </button>
+        <div class="sleep-dd-sep"></div>
+        <button class="sleep-dd-item cancel-item" id="sleep-cancel-btn"
+                onclick="cancelSleepTimer()" style="display:none">
+            Annuler le timer
+        </button>
+    </div>
+</div>
+            
             <button class="ctrl-icon" id="btn-queue-toggle" onclick="toggleQueue()"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M15 4a1 1 0 100 2h6a1 1 0 100-2h-6zm0 5a1 1 0 100 2h6a1 1 0 100-2h-6zm0 5a1 1 0 100 2h6a1 1 0 100-2h-6zM6 4a1 1 0 00-1 1v8.5a2.5 2.5 0 101 0V5a1 1 0 00-1-1zm0 13a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"/></svg></button>
             <div class="volume-control">
                 <button class="ctrl-icon" id="btn-mute" onclick="toggleMute()">
