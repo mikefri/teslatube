@@ -60,6 +60,19 @@ const MAX_RECENT   = 30;
 const MAX_HISTORY  = 8;
 const LIKES_NAME   = '❤️ Titres likés';
 
+// ── Sleep timer ──
+let sleepTimerTimeout  = null;
+let sleepTimerInterval = null;
+let sleepEndTime       = null;
+let sleepMinutes       = null;
+
+// ── Playlist drag ──
+let plDragSrcIndex   = null;
+let plDragPlaylistId = null;
+let plTouchSrcIndex  = null;
+let plTouchClone     = null;
+let plTouchOffsetY   = 0;
+
 /* ═══════════════════════════════════════
    UTILS
 ════════════════════════════════════════ */
@@ -740,8 +753,7 @@ function renderPlaylistView(id) {
             <p class="pl-hero-type">Playlist</p>
             <h1 class="pl-hero-name" id="pl-editable-name" contenteditable="true" spellcheck="false">${esc(pl.name)}</h1>
             <p class="pl-hero-meta"><strong>${pl.tracks.length}</strong> piste${pl.tracks.length !== 1 ? 's' : ''}</p>
-        </div>
-    `;
+        </div>`;
 
     const nameEl = document.getElementById('pl-editable-name');
     nameEl.addEventListener('blur', () => {
@@ -759,16 +771,15 @@ function renderPlaylistView(id) {
         <button class="btn-shuffle-big" onclick="shufflePlaylist('${id}')" title="Lecture aléatoire">
             <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M16.464 3.162A1 1 0 0117 4v1.5l1.293-1.293a1 1 0 011.414 1.414L17.414 7.5 19 7.5a1 1 0 110 2l-3 .001a1 1 0 01-.707-.294L13.586 7.5h-1.672A6.972 6.972 0 0110 9.207V7.586l.293-.293A4.972 4.972 0 0113.914 6H16V4a1 1 0 01.464-.838z"/></svg>
         </button>
-        <button class="btn-ctrl-big" title="Options de la playlist" onclick="openPlaylistOptionsDropdown(event,'${id}')">
+        <button class="btn-ctrl-big" title="Options" onclick="openPlaylistOptionsDropdown(event,'${id}')">
             <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M4.5 13.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm15 0a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm-7.5 0a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"/></svg>
-        </button>
-    `;
+        </button>`;
 
     const listEl = document.getElementById('pl-track-list');
     listEl.innerHTML = '';
 
     if (pl.tracks.length === 0) {
-        listEl.innerHTML = `<p style="color:var(--text-sub);padding:24px 16px;font-size:.9rem;">Cette playlist est vide. Recherchez des musiques et ajoutez-les !</p>`;
+        listEl.innerHTML = `<p style="color:var(--text-sub);padding:24px 16px;font-size:.9rem;">Playlist vide. Recherchez des musiques et ajoutez-les !</p>`;
         return;
     }
 
@@ -776,7 +787,10 @@ function renderPlaylistView(id) {
         const playing = currentTrack && currentTrack.id === t.id;
         const div = document.createElement('div');
         div.className = 'pl-track-row' + (playing ? ' playing' : '');
+        div.dataset.index = i;
+        div.draggable = true;
         div.innerHTML = `
+            <span class="pl-drag-handle" title="Réorganiser">⠿⠿</span>
             <div class="pl-tr-num">
                 <span>${i + 1}</span>
                 <div class="pl-tr-bars" style="${playing ? 'display:flex' : ''}">
@@ -792,22 +806,37 @@ function renderPlaylistView(id) {
             </div>
             <span class="pl-tr-artist-col">${esc(t.artist)}</span>
             <div class="pl-tr-dur-wrap">
-                <button class="pl-tr-remove" title="Retirer de la playlist">
+                <button class="pl-tr-remove" title="Retirer">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M5.25 5.25a.75.75 0 000 1.5h.75v11.25A2.25 2.25 0 008.25 20.25h7.5A2.25 2.25 0 0018 18V6.75h.75a.75.75 0 000-1.5H5.25zm2.25 1.5h9V18a.75.75 0 01-.75.75h-7.5a.75.75 0 01-.75-.75V6.75zm2.25-3a.75.75 0 000 1.5h3a.75.75 0 000-1.5h-3z"/></svg>
                 </button>
                 <span class="pl-tr-dur">${t.duration || '--:--'}</span>
-            </div>
-        `;
+            </div>`;
+
+        // Drag souris
+        div.addEventListener('dragstart', e => onPlDragStart(e, id, i));
+        div.addEventListener('dragover',  onPlDragOver);
+        div.addEventListener('drop',      e => onPlDrop(e, id, i));
+        div.addEventListener('dragend',   onPlDragEnd);
+
+        // Drag tactile (depuis la poignée seulement)
+        div.querySelector('.pl-drag-handle').addEventListener('touchstart',
+            e => onPlTouchStart(e, id, i), { passive: true });
+        div.addEventListener('touchmove', onPlTouchMove, { passive: false });
+        div.addEventListener('touchend',  onPlTouchEnd);
+
+        // Clic → lecture
         div.addEventListener('click', () => {
             playTrack(t);
             queue = [...pl.tracks.slice(i + 1)];
             saveQueue();
             renderQueue();
         });
+
         div.querySelector('.pl-tr-remove').addEventListener('click', e => {
             e.stopPropagation();
             removeTrackFromPlaylist(id, i);
         });
+
         listEl.appendChild(div);
     });
 }
@@ -1357,3 +1386,167 @@ setBarFill('volume-bar', 100);
 renderQueue();
 renderSearchPlaceholder();
 // renderLibrary() appelé automatiquement par le listener Firestore
+
+/* ═══════════════════════════════════════
+   SLEEP TIMER
+════════════════════════════════════════ */
+function toggleSleepDropdown() {
+    document.getElementById('sleep-dropdown').classList.toggle('open');
+}
+
+function setSleepTimer(minutes) {
+    cancelSleepTimer(true); // silencieux
+    sleepMinutes = minutes;
+    sleepEndTime = Date.now() + minutes * 60 * 1000;
+
+    sleepTimerTimeout = setTimeout(() => {
+        if (player && player.pauseVideo) player.pauseVideo();
+        showToast('😴 Bonne nuit — lecture en pause');
+        cancelSleepTimer(true);
+    }, minutes * 60 * 1000);
+
+    sleepTimerInterval = setInterval(updateSleepCountdown, 1000);
+    updateSleepCountdown();
+
+    document.getElementById('btn-sleep').classList.add('active');
+    document.getElementById('sleep-cancel-btn').style.display = 'flex';
+    document.querySelectorAll('.sleep-dd-item').forEach(el => el.classList.remove('active'));
+    document.getElementById(`sdi-${minutes}`)?.classList.add('active');
+
+    const label = minutes < 60 ? `${minutes} min` : '1 h';
+    showToast(`😴 Lecture s'arrête dans ${label}`);
+    document.getElementById('sleep-dropdown').classList.remove('open');
+}
+
+function cancelSleepTimer(silent = false) {
+    clearTimeout(sleepTimerTimeout);
+    clearInterval(sleepTimerInterval);
+    sleepTimerTimeout = sleepTimerInterval = sleepEndTime = sleepMinutes = null;
+
+    document.getElementById('btn-sleep')?.classList.remove('active');
+    const cancelBtn = document.getElementById('sleep-cancel-btn');
+    if (cancelBtn) cancelBtn.style.display = 'none';
+    ['sc-15','sc-30','sc-60'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = '';
+    });
+    document.querySelectorAll('.sleep-dd-item').forEach(el => el.classList.remove('active'));
+
+    // badge mobile
+    const badge = document.getElementById('sleep-badge');
+    if (badge) badge.style.display = 'none';
+
+    if (!silent) showToast('Timer de sommeil annulé');
+}
+
+function updateSleepCountdown() {
+    if (!sleepEndTime) return;
+    const remaining = Math.max(0, sleepEndTime - Date.now());
+    const mins = Math.floor(remaining / 60000);
+    const secs = Math.floor((remaining % 60000) / 1000);
+    const str  = `${mins}:${String(secs).padStart(2, '0')}`;
+
+    ['15','30','60'].forEach(m => {
+        const el = document.getElementById(`sc-${m}`);
+        if (el) el.textContent = +m === sleepMinutes ? str : '';
+    });
+
+    // Badge mobile
+    const badge    = document.getElementById('sleep-badge');
+    const badgeTime= document.getElementById('sleep-badge-time');
+    if (badge && badgeTime) {
+        badge.style.display = 'inline-flex';
+        badgeTime.textContent = str;
+    }
+}
+
+// Fermer le dropdown sleep au clic extérieur
+document.addEventListener('click', e => {
+    if (!e.target.closest('.sleep-timer-wrap')) {
+        document.getElementById('sleep-dropdown')?.classList.remove('open');
+    }
+});
+
+/* ═══════════════════════════════════════
+   PLAYLIST — DRAG & DROP (souris)
+════════════════════════════════════════ */
+function onPlDragStart(e, playlistId, index) {
+    plDragSrcIndex   = index;
+    plDragPlaylistId = playlistId;
+    e.currentTarget.classList.add('pl-dragging');
+    e.dataTransfer.effectAllowed = 'move';
+}
+function onPlDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    document.querySelectorAll('.pl-track-row').forEach(el => el.classList.remove('pl-drag-over'));
+    e.currentTarget.classList.add('pl-drag-over');
+}
+async function onPlDrop(e, playlistId, targetIndex) {
+    e.preventDefault();
+    if (plDragSrcIndex === null || plDragSrcIndex === targetIndex) return;
+    const pl = playlists.find(p => p.id === playlistId);
+    if (!pl) return;
+    const [moved] = pl.tracks.splice(plDragSrcIndex, 1);
+    pl.tracks.splice(targetIndex, 0, moved);
+    renderPlaylistView(playlistId);
+    renderLibrary();
+    await savePlaylistToFirestore(pl);
+}
+function onPlDragEnd() {
+    document.querySelectorAll('.pl-track-row')
+        .forEach(el => el.classList.remove('pl-dragging', 'pl-drag-over'));
+    plDragSrcIndex = null;
+}
+
+/* ═══════════════════════════════════════
+   PLAYLIST — DRAG & DROP (tactile)
+════════════════════════════════════════ */
+function onPlTouchStart(e, playlistId, index) {
+    plTouchSrcIndex  = index;
+    plDragPlaylistId = playlistId;
+    const el = e.currentTarget.closest('.pl-track-row');
+    const r  = el.getBoundingClientRect();
+    plTouchOffsetY = e.touches[0].clientY - r.top;
+    plTouchClone = el.cloneNode(true);
+    plTouchClone.style.cssText = `position:fixed;pointer-events:none;z-index:9999;opacity:.85;
+        width:${r.width}px;top:${r.top}px;left:${r.left}px;
+        background:var(--bg-card-hover);border-radius:var(--r-sm);
+        box-shadow:0 8px 32px rgba(0,0,0,.6);`;
+    document.body.appendChild(plTouchClone);
+    el.style.opacity = '.25';
+}
+function onPlTouchMove(e) {
+    if (plTouchSrcIndex === null || !plTouchClone) return;
+    e.preventDefault();
+    const y = e.touches[0].clientY;
+    plTouchClone.style.top = (y - plTouchOffsetY) + 'px';
+    document.querySelectorAll('.pl-track-row').forEach(el => el.classList.remove('pl-drag-over'));
+    document.elementFromPoint(e.touches[0].clientX, y)
+        ?.closest('.pl-track-row')?.classList.add('pl-drag-over');
+}
+async function onPlTouchEnd(e) {
+    if (plTouchSrcIndex === null) return;
+    const y = e.changedTouches[0].clientY;
+    const target      = document.elementFromPoint(e.changedTouches[0].clientX, y)?.closest('.pl-track-row');
+    const targetIndex = target ? +target.dataset.index : -1;
+
+    if (targetIndex >= 0 && targetIndex !== plTouchSrcIndex && plDragPlaylistId) {
+        const pl = playlists.find(p => p.id === plDragPlaylistId);
+        if (pl) {
+            const [moved] = pl.tracks.splice(plTouchSrcIndex, 1);
+            pl.tracks.splice(targetIndex, 0, moved);
+            renderLibrary();
+            await savePlaylistToFirestore(pl);
+        }
+    }
+
+    if (plTouchClone) { plTouchClone.remove(); plTouchClone = null; }
+    document.querySelectorAll('.pl-track-row').forEach(el => {
+        el.style.opacity = '';
+        el.classList.remove('pl-drag-over', 'pl-dragging');
+    });
+    const id = plDragPlaylistId;
+    plTouchSrcIndex = plDragPlaylistId = null;
+    if (id) renderPlaylistView(id);
+}
