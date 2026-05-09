@@ -57,6 +57,9 @@
                     Rechercher
                 </a>
                 <button onclick="logout()" style="color:#b3b3b3;background:none;border:none;cursor:pointer;font-size:.85rem;">Déconnexion</button>
+                <button onclick="openAdTipsModal()" style="color:#b3b3b3;background:none;border:none;cursor:pointer;font-size:.85rem;">
+    🚫 Supprimer les pubs
+</button>
             </nav>
         </div>
 
@@ -299,5 +302,127 @@
     </button>
 </nav>
  <script src="pwa.js"></script>   
+
+<!-- MODALE -->
+<div id="adtips-overlay" style="
+    display:none;
+    position:fixed;inset:0;z-index:3000;
+    background:rgba(0,0,0,.80);
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+    align-items:center;justify-content:center;
+    padding:16px;
+">
+    <div id="adtips-box" style="
+        background:#161616;
+        border:1px solid rgba(255,255,255,.1);
+        border-radius:16px;
+        padding:28px 24px;
+        width:100%;max-width:400px;
+        box-shadow:0 24px 80px rgba(0,0,0,.8);
+        position:relative;
+    ">
+        <!-- Close -->
+        <button onclick="closeAdTipsModal()" style="
+            position:absolute;top:14px;right:14px;
+            background:rgba(255,255,255,.07);border:none;
+            color:#fff;width:28px;height:28px;border-radius:50%;
+            font-size:1rem;cursor:pointer;
+            display:flex;align-items:center;justify-content:center;
+            line-height:1;
+        ">×</button>
+ 
+        <!-- Header -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+            <span style="font-size:1.4rem">🚫</span>
+            <h3 style="color:#fff;font-size:1.1rem;font-weight:700;margin:0;">Supprimer les publicités</h3>
+        </div>
+        <p style="color:#888;font-size:.8rem;margin:0 0 20px;line-height:1.5;">
+            Les pubs viennent de YouTube et ne peuvent pas être supprimées depuis l'app.
+            Voici la solution selon votre appareil&nbsp;:
+        </p>
+ 
+        <!-- Tabs -->
+        <div id="adtips-tabs" style="
+            display:flex;gap:6px;
+            background:rgba(255,255,255,.05);
+            border-radius:10px;padding:4px;
+            margin-bottom:18px;
+        ">
+            <button class="adtab active" onclick="switchAdTab('android',this)" style="flex:1;">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" style="margin-right:5px;vertical-align:middle;"><path d="M17.523 15.341l1.2 2.08a.5.5 0 01-.866.5l-1.22-2.11A7.945 7.945 0 0112 16.5a7.945 7.945 0 01-4.637-1.189l-1.22 2.11a.5.5 0 01-.866-.5l1.2-2.08A7.977 7.977 0 014 9h16a7.977 7.977 0 01-2.477 6.341zM9.5 12a1 1 0 100-2 1 1 0 000 2zm5 0a1 1 0 100-2 1 1 0 000 2zM7.088 4.695L5.965 2.68a.5.5 0 01.87-.494l1.15 2.03A7.958 7.958 0 0112 3.5c1.47 0 2.846.397 4.015 1.087l1.15-2.03a.5.5 0 01.87.494L16.912 4.695A7.98 7.98 0 0120 9H4a7.98 7.98 0 013.088-4.305z"/></svg>
+                Android
+            </button>
+            <button class="adtab" onclick="switchAdTab('ios',this)" style="flex:1;">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" style="margin-right:5px;vertical-align:middle;"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                iOS
+            </button>
+            <button class="adtab" onclick="switchAdTab('desktop',this)" style="flex:1;">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" style="margin-right:5px;vertical-align:middle;"><path d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h7v2H8a1 1 0 100 2h8a1 1 0 100-2h-3v-2h7a2 2 0 002-2V7a2 2 0 00-2-2H4z"/></svg>
+                Desktop
+            </button>
+        </div>
+ 
+        <!-- Tab content -->
+        <div id="tab-android" class="adtab-content">
+            <div class="adtip-card best">
+                <div class="adtip-badge">⭐ Recommandé</div>
+                <div class="adtip-name">Firefox + uBlock Origin</div>
+                <div class="adtip-desc">Ouvrez TeslaTube dans Firefox, installez l'extension uBlock Origin depuis les add-ons Firefox. Blocage 100% des pubs YouTube.</div>
+                <div style="display:flex;gap:8px;margin-top:12px;">
+                    <a href="https://play.google.com/store/apps/details?id=org.mozilla.firefox" target="_blank" class="adtip-btn">Firefox</a>
+                    <a href="https://addons.mozilla.org/fr/firefox/addon/ublock-origin/" target="_blank" class="adtip-btn">uBlock Origin</a>
+                </div>
+            </div>
+            <div class="adtip-card">
+                <div class="adtip-name">Brave Browser</div>
+                <div class="adtip-desc">Bloqueur intégré, aucune configuration. Ouvrez simplement TeslaTube dans Brave.</div>
+                <a href="https://play.google.com/store/apps/details?id=com.brave.browser" target="_blank" class="adtip-btn" style="margin-top:12px;display:inline-block;">Télécharger Brave</a>
+            </div>
+            <div class="adtip-card">
+                <div class="adtip-name">YouTube Premium</div>
+                <div class="adtip-desc">Si vous avez un abonnement Premium, connectez-vous sur YouTube dans le même navigateur — les pubs disparaissent automatiquement.</div>
+            </div>
+        </div>
+ 
+        <div id="tab-ios" class="adtip-content" style="display:none;">
+            <div class="adtip-card best">
+                <div class="adtip-badge">⭐ Recommandé</div>
+                <div class="adtip-name">Brave Browser</div>
+                <div class="adtip-desc">Le plus simple sur iOS. Bloqueur intégré, aucune configuration. Ouvrez TeslaTube dans Brave.</div>
+                <a href="https://apps.apple.com/fr/app/brave-private-web-browser/id1052879175" target="_blank" class="adtip-btn" style="margin-top:12px;display:inline-block;">Télécharger Brave</a>
+            </div>
+            <div class="adtip-card">
+                <div class="adtip-name">AdGuard + Safari</div>
+                <div class="adtip-desc">Installez AdGuard depuis l'App Store, activez l'extension dans Safari → Réglages. Efficace mais pas à 100% sur les iframes YouTube.</div>
+                <a href="https://apps.apple.com/fr/app/adguard-adblock-privacy/id1047223162" target="_blank" class="adtip-btn" style="margin-top:12px;display:inline-block;">AdGuard</a>
+            </div>
+            <div class="adtip-card">
+                <div class="adtip-name">YouTube Premium</div>
+                <div class="adtip-desc">Connectez-vous sur YouTube dans le même navigateur avec un compte Premium — les pubs disparaissent dans le player embarqué.</div>
+            </div>
+        </div>
+ 
+        <div id="tab-desktop" class="adtip-content" style="display:none;">
+            <div class="adtip-card best">
+                <div class="adtip-badge">⭐ Recommandé</div>
+                <div class="adtip-name">uBlock Origin</div>
+                <div class="adtip-desc">Disponible sur Chrome, Firefox, Edge. Blocage 100% des pubs YouTube, aucune configuration requise.</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
+                    <a href="https://chromewebstore.google.com/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm" target="_blank" class="adtip-btn">Chrome</a>
+                    <a href="https://addons.mozilla.org/fr/firefox/addon/ublock-origin/" target="_blank" class="adtip-btn">Firefox</a>
+                    <a href="https://microsoftedge.microsoft.com/addons/detail/ublock-origin/odfafepnkmbhccpbejgmiehpchacaeak" target="_blank" class="adtip-btn">Edge</a>
+                </div>
+            </div>
+            <div class="adtip-card">
+                <div class="adtip-name">YouTube Premium</div>
+                <div class="adtip-desc">Connectez-vous sur YouTube dans le même navigateur avec un compte Premium — les pubs disparaissent automatiquement.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+    
 </body>
 </html>
