@@ -1567,3 +1567,38 @@ async function onPlTouchEnd(e) {
     plTouchSrcIndex = plDragPlaylistId = null;
     if (id) renderPlaylistView(id);
 }
+/* ── Détection plateforme ── */
+function detectPlatform() {
+    const ua = navigator.userAgent;
+    if (/android/i.test(ua))         return 'android';
+    if (/ipad|iphone|ipod/i.test(ua)) return 'ios';
+    return 'desktop';
+}
+ 
+function openAdTipsModal() {
+    const overlay = document.getElementById('adtips-overlay');
+    overlay.classList.add('open');
+    // Active l'onglet correspondant à la plateforme
+    const platform = detectPlatform();
+    const btn = document.querySelector(`.adtab[onclick*="${platform}"]`);
+    if (btn) switchAdTab(platform, btn);
+    // Fermer en cliquant l'overlay
+    overlay.addEventListener('click', e => {
+        if (e.target === overlay) closeAdTipsModal();
+    }, { once: true });
+}
+ 
+function closeAdTipsModal() {
+    document.getElementById('adtips-overlay').classList.remove('open');
+}
+ 
+function switchAdTab(tab, btn) {
+    // Tabs
+    document.querySelectorAll('.adtab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    // Panels
+    ['android','ios','desktop'].forEach(t => {
+        const el = document.getElementById(`tab-${t}`);
+        if (el) el.style.display = t === tab ? 'block' : 'none';
+    });
+}
