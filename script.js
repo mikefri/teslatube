@@ -244,51 +244,40 @@ function handleTrackEnd() {
 async function searchMusic() {
     const q = document.getElementById('search-input').value.trim();
     if (!q) return;
+    document.getElementById('results-placeholder').style.display = 'none';
 
-    // ── Cache hit : pas de requête API ──
     if (searchCache.has(q)) {
-        document.getElementById('results-placeholder').style.display = 'none';
         const [items, durMap] = searchCache.get(q);
         renderResults(items, durMap);
         return;
     }
 
-    document.getElementById('results-placeholder').style.display = 'none';
-    const container = document.getElementById('results');
-    container.innerHTML = '<div style="color:#b3b3b3;padding:24px 0;font-size:.9rem;">Recherche en cours…</div>';
+    showSkeletons(18);
 
     const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(q)}&type=video&videoCategoryId=10&maxResults=18&key=${YOUTUBE_API_KEY}`;
     try {
         const res  = await fetch(searchUrl);
         const data = await res.json();
         if (data.error) {
-            container.innerHTML = `<div style="color:#b3b3b3;padding:24px 0;">Erreur : ${data.error.message}</div>`;
+            document.getElementById('results').innerHTML = `<div style="color:#b3b3b3;padding:24px 0;">Erreur : ${data.error.message}</div>`;
             return;
         }
-
-        const items = data.items || [];
-
-        // Récupérer durées + stats en une seule requête
+        const items      = data.items || [];
         const ids        = items.map(i => i.id.videoId).join(',');
         const detailsUrl = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails,statistics&id=${ids}&key=${YOUTUBE_API_KEY}`;
-        const detailsRes = await fetch(detailsUrl);
-        const details    = await detailsRes.json();
-
-        const durMap = {};
+        const details    = await (await fetch(detailsUrl)).json();
+        const durMap     = {};
         (details.items || []).forEach(v => {
             durMap[v.id] = {
                 duration: parseISO8601Duration(v.contentDetails.duration),
                 views:    formatViews(v.statistics?.viewCount)
             };
         });
-
-        // ── Mettre en cache ──
         searchCache.set(q, [items, durMap]);
-
+        addToSearchHistory(q);
         renderResults(items, durMap);
     } catch (e) {
-        console.error('Search error:', e);
-        container.innerHTML = '<div style="color:#b3b3b3;padding:24px 0;">Erreur réseau.</div>';
+        document.getElementById('results').innerHTML = '<div style="color:#b3b3b3;padding:24px 0;">Erreur réseau.</div>';
     }
 }
 
@@ -340,8 +329,9 @@ function playTrack(t) {
     clearInterval(progressInterval);
     progressInterval = setInterval(updateProgress, 500);
     document.title = `${t.title} — Teslatube`;
- 
-    // Uniquement highlight, pas de re-render complet
+    addToRecentlyPlayed(t);
+    updateHeartState(t);
+    if (activeQueueTab === 'recent') renderRecentlyPlayed();
     renderCurrentPlaylistHighlight();
     updateMediaSession(t);
 }
@@ -528,8 +518,10 @@ function renderQueue() {
     queue.forEach((t, i) => {
         const div = document.createElement('div');
         div.className = 'queue-item';
+        div.dataset.index = i;
+        div.draggable = true;
         div.innerHTML = `
-            <span class="queue-drag">⠿⠿</span>
+            <span class="queue-drag" title="Déplacer">⠿⠿</span>
             <div class="queue-thumb-wrap">
                 <img class="queue-thumb" src="${t.img}" alt="" onerror="this.style.display='none'">
                 <div class="queue-play-overlay">
@@ -543,19 +535,24 @@ function renderQueue() {
             <span class="queue-duration">${t.duration || '--:--'}</span>
             <button class="queue-more-btn" title="Supprimer">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M5.25 5.25a.75.75 0 000 1.5h.75v11.25A2.25 2.25 0 008.25 20.25h7.5A2.25 2.25 0 0018 18V6.75h.75a.75.75 0 000-1.5H5.25zm2.25 1.5h9V18a.75.75 0 01-.75.75h-7.5a.75.75 0 01-.75-.75V6.75zm2.25-3a.75.75 0 000 1.5h3a.75.75 0 000-1.5h-3z"/></svg>
-            </button>
-        `;
+            </button>`;
+
+        // Drag souris
+        div.addEventListener('dragstart', onDragStart);
+        div.addEventListener('dragover',  onDragOver);
+        div.addEventListener('drop',      onDrop);
+        div.addEventListener('dragend',   onDragEnd);
+
+        // Drag tactile (depuis la poignée)
+        div.querySelector('.queue-drag').addEventListener('touchstart', e => onTouchDragStart(e, i), { passive: true });
+        div.addEventListener('touchmove',  onTouchDragMove, { passive: false });
+        div.addEventListener('touchend',   onTouchDragEnd);
+
         div.addEventListener('click', () => {
-            queue.splice(i, 1);
-            saveQueue();
-            playTrack(t);
-            renderQueue();
+            queue.splice(i, 1); saveQueue(); playTrack(t); renderQueue();
         });
         div.querySelector('.queue-more-btn').addEventListener('click', e => {
-            e.stopPropagation();
-            queue.splice(i, 1);
-            saveQueue();
-            renderQueue();
+            e.stopPropagation(); queue.splice(i, 1); saveQueue(); renderQueue();
         });
         container.appendChild(div);
     });
@@ -1086,9 +1083,7 @@ document.getElementById('btn-repeat').addEventListener('click', function () {
 });
 
 // ── Heart ──
-document.getElementById('btn-heart').addEventListener('click', function () {
-    this.classList.toggle('active');
-});
+document.getElementById('btn-heart').addEventListener('click', toggleLike);
 
 /* ═══════════════════════════════════════
    SEARCH — Événements
@@ -1119,12 +1114,236 @@ function clearSearch() {
     clearTimeout(searchTimeout);
     document.getElementById('search-clear').style.display = 'none';
     document.getElementById('results').innerHTML = '';
-    document.getElementById('results-placeholder').style.display = 'block';
+    document.getElementById('results-placeholder').style.display = 'flex';
+    renderSearchPlaceholder();
 }
 
+/* ═══════════════════════════════════════
+   SQUELETTES DE CHARGEMENT
+════════════════════════════════════════ */
+function showSkeletons(count = 18) {
+    const card = `
+        <div class="track-card skeleton-card">
+            <div class="skeleton-img"></div>
+            <div class="skeleton-line" style="width:78%"></div>
+            <div class="skeleton-line" style="width:52%"></div>
+        </div>`;
+    document.getElementById('results').innerHTML = card.repeat(count);
+}
+
+/* ═══════════════════════════════════════
+   HISTORIQUE DE RECHERCHE
+════════════════════════════════════════ */
+function addToSearchHistory(q) {
+    let h = JSON.parse(localStorage.getItem('ttHistory') || '[]');
+    h = [q, ...h.filter(x => x !== q)].slice(0, MAX_HISTORY);
+    localStorage.setItem('ttHistory', JSON.stringify(h));
+}
+
+function renderSearchPlaceholder() {
+    const ph = document.getElementById('results-placeholder');
+    const h  = JSON.parse(localStorage.getItem('ttHistory') || '[]');
+    if (h.length === 0) {
+        ph.innerHTML = `
+            <svg viewBox="0 0 24 24" width="56" height="56" fill="#535353"><path d="M10.533 1.279c-5.18 0-9.407 4.226-9.407 9.407 0 5.18 4.226 9.407 9.407 9.407 2.19 0 4.2-.755 5.8-2.02l4.996 4.997a1 1 0 001.414-1.414l-4.994-4.994a9.368 9.368 0 002.191-6.976 9.407 9.407 0 00-9.407-9.407zm-7.407 9.407a7.407 7.407 0 1114.814 0 7.407 7.407 0 01-14.814 0z"/></svg>
+            <h2>Recherchez votre musique</h2>
+            <p>Trouvez vos artistes et titres préférés.</p>`;
+        return;
+    }
+    const chips = h.map(q => `
+        <button class="history-chip" onclick="replaySearch(${JSON.stringify(q)})">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="#888"><path d="M10.533 1.279c-5.18 0-9.407 4.226-9.407 9.407 0 5.18 4.226 9.407 9.407 9.407 2.19 0 4.2-.755 5.8-2.02l4.996 4.997a1 1 0 001.414-1.414l-4.994-4.994a9.368 9.368 0 002.191-6.976 9.407 9.407 0 00-9.407-9.407zm-7.407 9.407a7.407 7.407 0 1114.814 0 7.407 7.407 0 01-14.814 0z"/></svg>
+            ${esc(q)}
+            <button class="history-remove" onclick="removeFromHistory(event,${JSON.stringify(q)})">×</button>
+        </button>`).join('');
+    ph.innerHTML = `
+        <h2 style="margin-bottom:8px">Recherches récentes</h2>
+        <div class="search-history">${chips}</div>
+        <button class="history-clear-btn" onclick="clearSearchHistory()">Effacer l'historique</button>`;
+}
+
+function removeFromHistory(e, q) {
+    e.stopPropagation();
+    let h = JSON.parse(localStorage.getItem('ttHistory') || '[]');
+    localStorage.setItem('ttHistory', JSON.stringify(h.filter(x => x !== q)));
+    renderSearchPlaceholder();
+}
+
+function clearSearchHistory() {
+    localStorage.removeItem('ttHistory');
+    renderSearchPlaceholder();
+}
+
+function replaySearch(q) {
+    document.getElementById('search-input').value = q;
+    document.getElementById('search-clear').style.display = 'inline-flex';
+    document.getElementById('results-placeholder').style.display = 'none';
+    searchMusic();
+}
+
+/* ═══════════════════════════════════════
+   RÉCEMMENT JOUÉS
+════════════════════════════════════════ */
+function addToRecentlyPlayed(t) {
+    recentlyPlayed = [t, ...recentlyPlayed.filter(x => x.id !== t.id)].slice(0, MAX_RECENT);
+    localStorage.setItem('ttRecent', JSON.stringify(recentlyPlayed));
+}
+
+function renderRecentlyPlayed() {
+    const container = document.getElementById('queue-list');
+    const countEl   = document.getElementById('playlist-count');
+    const n = recentlyPlayed.length;
+    countEl.textContent = n === 0
+        ? 'Aucun titre récent'
+        : `${n} titre${n > 1 ? 's' : ''} récent${n > 1 ? 's' : ''}`;
+    container.innerHTML = '';
+    if (n === 0) {
+        container.innerHTML = `<p style="padding:20px 16px;font-size:.83rem;color:var(--text-sub);">Les titres lus apparaîtront ici.</p>`;
+        return;
+    }
+    recentlyPlayed.forEach(t => {
+        const isActive = currentTrack && currentTrack.id === t.id;
+        const div = document.createElement('div');
+        div.className = 'queue-item';
+        div.innerHTML = `
+            <div class="queue-thumb-wrap">
+                <img class="queue-thumb" src="${t.img}" alt="" onerror="this.style.display='none'">
+                <div class="queue-play-overlay">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="#fff"><path d="M7.05 3.606l13.49 7.788a.7.7 0 010 1.212L7.05 20.394A.7.7 0 016 19.788V4.212a.7.7 0 011.05-.606z"/></svg>
+                </div>
+            </div>
+            <div class="queue-info">
+                <span class="queue-title" style="${isActive ? 'color:var(--green)' : ''}">${esc(t.title)}</span>
+                <span class="queue-artist">${esc(t.artist)}</span>
+            </div>
+            <span class="queue-duration">${t.duration || '--:--'}</span>`;
+        div.addEventListener('click', () => playTrack(t));
+        container.appendChild(div);
+    });
+}
+
+function switchQueueTab(tab, btn) {
+    activeQueueTab = tab;
+    document.querySelectorAll('.queue-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    tab === 'queue' ? renderQueue() : renderRecentlyPlayed();
+}
+
+/* ═══════════════════════════════════════
+   LIKES — Playlist "❤️ Titres likés"
+════════════════════════════════════════ */
+function getLikesPlaylist() {
+    return playlists.find(p => p.name === LIKES_NAME);
+}
+
+function isTrackLiked(track) {
+    if (!track) return false;
+    const pl = getLikesPlaylist();
+    return pl ? pl.tracks.some(t => t.id === track.id) : false;
+}
+
+function updateHeartState(track) {
+    document.getElementById('btn-heart').classList.toggle('active', isTrackLiked(track));
+}
+
+async function toggleLike() {
+    if (!currentTrack) { showToast('Aucun titre en cours'); return; }
+    let pl = getLikesPlaylist();
+    if (!pl) {
+        const id  = 'pl_likes_' + Date.now();
+        const newPl = { id, name: LIKES_NAME, color: '#e91429', tracks: [], createdAt: Date.now() };
+        playlists.push(newPl);
+        renderLibrary();
+        await savePlaylistToFirestore(newPl);
+        pl = newPl;
+    }
+    const idx = pl.tracks.findIndex(t => t.id === currentTrack.id);
+    if (idx >= 0) {
+        pl.tracks.splice(idx, 1);
+        showToast('Retiré des titres likés');
+    } else {
+        pl.tracks.push(currentTrack);
+        showToast('❤️ Ajouté aux titres likés');
+    }
+    updateHeartState(currentTrack);
+    renderLibrary();
+    await savePlaylistToFirestore(pl);
+}
+
+/* ═══════════════════════════════════════
+   DRAG & DROP — Souris (desktop)
+════════════════════════════════════════ */
+function onDragStart(e) {
+    dragSrcIndex = +e.currentTarget.dataset.index;
+    e.currentTarget.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+}
+function onDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    document.querySelectorAll('.queue-item').forEach(el => el.classList.remove('drag-over'));
+    e.currentTarget.classList.add('drag-over');
+}
+function onDrop(e) {
+    e.preventDefault();
+    const targetIndex = +e.currentTarget.dataset.index;
+    if (dragSrcIndex === null || dragSrcIndex === targetIndex) return;
+    const [moved] = queue.splice(dragSrcIndex, 1);
+    queue.splice(targetIndex, 0, moved);
+    saveQueue();
+    renderQueue();
+}
+function onDragEnd() {
+    document.querySelectorAll('.queue-item').forEach(el => el.classList.remove('dragging', 'drag-over'));
+    dragSrcIndex = null;
+}
+
+/* ═══════════════════════════════════════
+   DRAG & DROP — Toucher (mobile)
+════════════════════════════════════════ */
+function onTouchDragStart(e, index) {
+    touchSrcIndex = index;
+    const el = e.currentTarget.closest('.queue-item');
+    const r  = el.getBoundingClientRect();
+    touchOffsetY = e.touches[0].clientY - r.top;
+    touchClone = el.cloneNode(true);
+    touchClone.style.cssText = `position:fixed;pointer-events:none;z-index:9999;opacity:.85;
+        width:${r.width}px;top:${r.top}px;left:${r.left}px;
+        background:var(--bg-card-hover);border-radius:var(--r-sm);
+        box-shadow:0 8px 32px rgba(0,0,0,.6);`;
+    document.body.appendChild(touchClone);
+    el.style.opacity = '.25';
+}
+function onTouchDragMove(e) {
+    if (touchSrcIndex === null || !touchClone) return;
+    e.preventDefault();
+    const y = e.touches[0].clientY;
+    touchClone.style.top = (y - touchOffsetY) + 'px';
+    document.querySelectorAll('.queue-item').forEach(el => el.classList.remove('drag-over'));
+    document.elementFromPoint(e.touches[0].clientX, y)?.closest('.queue-item')?.classList.add('drag-over');
+}
+function onTouchDragEnd(e) {
+    if (touchSrcIndex === null) return;
+    const y = e.changedTouches[0].clientY;
+    const target = document.elementFromPoint(e.changedTouches[0].clientX, y)?.closest('.queue-item');
+    const targetIndex = target ? +target.dataset.index : -1;
+    if (targetIndex >= 0 && targetIndex !== touchSrcIndex) {
+        const [moved] = queue.splice(touchSrcIndex, 1);
+        queue.splice(targetIndex, 0, moved);
+        saveQueue();
+    }
+    if (touchClone) { touchClone.remove(); touchClone = null; }
+    document.querySelectorAll('.queue-item').forEach(el => {
+        el.style.opacity = '';
+        el.classList.remove('drag-over');
+    });
+    touchSrcIndex = null;
+    renderQueue();
+}
 /* ═══════════════════════════════════════
    INIT
 ════════════════════════════════════════ */
 setBarFill('volume-bar', 100);
 renderQueue();
+renderSearchPlaceholder();
 // renderLibrary() appelé automatiquement par le listener Firestore
