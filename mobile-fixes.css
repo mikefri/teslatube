@@ -159,3 +159,125 @@
 @media (max-width: 400px) {
     .music-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
 }
+
+/* ═══════════════════════════════════════════════
+   LANDSCAPE FIX — téléphone & tablette en paysage
+═══════════════════════════════════════════════ */
+
+/* ── Téléphone en paysage (hauteur ≤ 500px) ── */
+@media (orientation: landscape) and (max-height: 500px) {
+
+    /* Cacher la bottom-nav, on a de la place en largeur */
+    .bottom-nav { display: none !important; }
+
+    /* Grid 2 colonnes + player compact */
+    .app {
+        height: 100dvh !important;
+        grid-template-columns: 72px 1fr !important;
+        grid-template-rows: 1fr 60px !important;
+        padding: 4px !important;
+        gap: 4px !important;
+    }
+
+    /* Sidebar icônes seulement */
+    .sidebar {
+        display: flex !important;
+        position: static !important;
+        width: 72px !important;
+    }
+    .sidebar .lib-item-info,
+    .sidebar .lib-item-more,
+    .sidebar .logo span,
+    .sidebar .nav-item span,
+    .sidebar .library-header span,
+    .sidebar .lib-filters,
+    .sidebar .lib-empty        { display: none !important; }
+    .sidebar .lib-item         { justify-content: center; padding: 10px; }
+    .sidebar .lib-item-thumb   { width: 40px; height: 40px; }
+    .sidebar .logo             { justify-content: center; padding: 6px 0 12px; }
+    .sidebar .nav-item         { justify-content: center; padding: 10px; }
+
+    /* Player bar horizontal compact */
+    .player-bar {
+        grid-column: 1 / -1 !important;
+        flex-direction: row !important;
+        height: 60px !important;
+        padding: 0 14px !important;
+        gap: 10px !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+    }
+
+    .player-left {
+        flex: 1 !important;
+        max-width: 33% !important;
+        width: auto !important;
+        gap: 8px !important;
+    }
+    .player-thumb        { width: 36px !important; height: 36px !important; }
+    .player-track-title  { font-size: .78rem !important; }
+    .player-track-artist { font-size: .66rem !important; }
+
+    .player-center {
+        flex: 0 0 36% !important;
+        max-width: 36% !important;
+        width: auto !important;
+        gap: 2px !important;
+    }
+    #btn-shuffle,
+    #btn-repeat { display: flex !important; }
+
+    .player-right {
+        display: flex !important;
+        flex: 1 !important;
+        max-width: 31% !important;
+        justify-content: flex-end !important;
+    }
+
+    /* Topbar & contenu compacts */
+    .topbar      { padding: 6px 10px !important; }
+    .section-pad { padding: 6px 10px 16px !important; }
+
+    /* Grille résultats : 4 colonnes en paysage */
+    .music-grid {
+        grid-template-columns: repeat(4, 1fr) !important;
+        gap: 8px !important;
+    }
+
+    /* Toast au-dessus du player */
+    .toast { bottom: 68px !important; }
+}
+
+/* ── Tablette en paysage (501–1023px de hauteur) ── */
+@media (orientation: landscape) and (min-height: 501px) and (max-width: 1023px) {
+
+    .bottom-nav { display: none !important; }
+
+    .app {
+        height: 100dvh !important;
+        grid-template-columns: 72px 1fr !important;
+        grid-template-rows: 1fr var(--player-h) !important;
+        padding: var(--gap) !important;
+        gap: var(--gap) !important;
+    }
+
+    .sidebar     { display: flex !important; position: static !important; }
+    .queue-panel { display: none !important; }
+
+    .player-bar {
+        grid-column: 1 / -1 !important;
+        flex-direction: row !important;
+        height: var(--player-h) !important;
+        padding: 0 20px !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+    }
+    .player-left   { flex: 1 !important; max-width: 30% !important; width: auto !important; }
+    .player-center { flex: 0 0 40% !important; max-width: 40% !important; width: auto !important; }
+    .player-right  { display: flex !important; flex: 1 !important; max-width: 30% !important; }
+    #btn-shuffle,
+    #btn-repeat    { display: flex !important; }
+
+    .music-grid { grid-template-columns: repeat(4, 1fr) !important; }
+    .toast      { bottom: 100px !important; }
+}
