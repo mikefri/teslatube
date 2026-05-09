@@ -1,9 +1,9 @@
 /* ═══════════════════════════════════════════════════
-   TESLATUBE — script.js  v2.6
+   TESLATUBE — script.js  v2.7
    Playlist management + Queue + Player + Firebase
    Améliorations : cache recherche, shuffle/repeat
    fonctionnels, confirmation suppression, recherche
-   avec délai, toast file vide.
+   avec délai, toast file vide, pochette mosaïque 2×2.
 ════════════════════════════════════════════════════ */
 
 // ── Firebase Config ──
@@ -44,13 +44,13 @@ let unsubscribePlaylists = null;
 // ── Nouveaux états ──
 let shuffleMode          = false;
 let repeatMode           = false;
-const searchCache        = new Map();   // cache des résultats YouTube
-let searchTimeout        = null;        // délai de recherche auto
+const searchCache        = new Map();
+let searchTimeout        = null;
 
 // ── Palette ──
 const COLORS = ['#e91429','#503750','#0d73ec','#148a08','#e8115b','#27856a','#8d67ab','#1e3264','#f59b23','#0e6251'];
 
-let recentlyPlayed = JSON.parse(localStorage.getItem('ttRecent')   || '[]');
+let recentlyPlayed = JSON.parse(localStorage.getItem('ttRecent') || '[]');
 let activeQueueTab = 'queue';
 let dragSrcIndex   = null;
 let touchSrcIndex  = null;
@@ -103,6 +103,40 @@ function formatViews(n) {
     if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M vues';
     if (n >= 1_000)     return (n / 1_000).toFixed(0) + 'K vues';
     return n + ' vues';
+}
+
+/* ─────────────────────────────────────
+   POCHETTE MOSAÏQUE 2×2
+   - 0 image       → emoji 🎵
+   - 1-3 images    → 1 image plein format
+   - 4+ images distinctes → grille 2×2
+───────────────────────────────────── */
+function buildCoverHTML(tracks, color, size = '100%') {
+    const imgs = [...new Set(
+        tracks.map(t => t.img).filter(Boolean)
+    )].slice(0, 4);
+
+    if (imgs.length === 0) {
+        return `<span style="font-size:1.4rem">🎵</span>`;
+    }
+
+    if (imgs.length < 4) {
+        return `<img src="${imgs[0]}" alt=""
+            style="width:${size};height:${size};object-fit:cover;display:block;">`;
+    }
+
+    // 4 images distinctes → mosaïque 2×2
+    return `<div style="
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        grid-template-rows:1fr 1fr;
+        width:${size};height:${size};
+        gap:0;overflow:hidden;">
+        ${imgs.map(src =>
+            `<img src="${src}" alt=""
+                style="width:100%;height:100%;object-fit:cover;display:block;">`
+        ).join('')}
+    </div>`;
 }
 
 /* ═══════════════════════════════════════
@@ -251,7 +285,6 @@ function onPlayerStateChange(event) {
     if (event.data === S.PLAYING) setPlayState(true);
 }
 
-// ── Gestion de fin de piste (repeat / normal) ──
 function handleTrackEnd() {
     if (repeatMode && currentTrack) {
         player.seekTo(0, true);
@@ -282,7 +315,8 @@ async function searchMusic() {
         const res  = await fetch(searchUrl);
         const data = await res.json();
         if (data.error) {
-            document.getElementById('results').innerHTML = `<div style="color:#b3b3b3;padding:24px 0;">Erreur : ${data.error.message}</div>`;
+            document.getElementById('results').innerHTML =
+                `<div style="color:#b3b3b3;padding:24px 0;">Erreur : ${data.error.message}</div>`;
             return;
         }
         const items      = data.items || [];
@@ -300,7 +334,8 @@ async function searchMusic() {
         addToSearchHistory(q);
         renderResults(items, durMap);
     } catch (e) {
-        document.getElementById('results').innerHTML = '<div style="color:#b3b3b3;padding:24px 0;">Erreur réseau.</div>';
+        document.getElementById('results').innerHTML =
+            '<div style="color:#b3b3b3;padding:24px 0;">Erreur réseau.</div>';
     }
 }
 
@@ -385,7 +420,6 @@ function togglePlay() {
     player.getPlayerState() === 1 ? player.pauseVideo() : player.playVideo();
 }
 
-// ── Piste suivante (shuffle ou normal) ──
 function nextTrack() {
     if (queue.length === 0) {
         showToast('File d\'attente vide');
@@ -416,7 +450,7 @@ function prevTrack() {
 }
 
 /* ═══════════════════════════════════════
-   MEDIA SESSION API (lock screen / notifications)
+   MEDIA SESSION API
 ════════════════════════════════════════ */
 function updateMediaSession(t) {
     if (!('mediaSession' in navigator)) return;
@@ -560,13 +594,11 @@ function renderQueue() {
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M5.25 5.25a.75.75 0 000 1.5h.75v11.25A2.25 2.25 0 008.25 20.25h7.5A2.25 2.25 0 0018 18V6.75h.75a.75.75 0 000-1.5H5.25zm2.25 1.5h9V18a.75.75 0 01-.75.75h-7.5a.75.75 0 01-.75-.75V6.75zm2.25-3a.75.75 0 000 1.5h3a.75.75 0 000-1.5h-3z"/></svg>
             </button>`;
 
-        // Drag souris
         div.addEventListener('dragstart', onDragStart);
         div.addEventListener('dragover',  onDragOver);
         div.addEventListener('drop',      onDrop);
         div.addEventListener('dragend',   onDragEnd);
 
-        // Drag tactile (depuis la poignée)
         div.querySelector('.queue-drag').addEventListener('touchstart', e => onTouchDragStart(e, i), { passive: true });
         div.addEventListener('touchmove',  onTouchDragMove, { passive: false });
         div.addEventListener('touchend',   onTouchDragEnd);
@@ -611,7 +643,6 @@ async function renamePlaylist(id, newName) {
     showToast('Playlist renommée');
 }
 
-// ── Suppression avec confirmation ──
 async function deletePlaylist(id) {
     const pl = playlists.find(p => p.id === id);
     if (!pl) return;
@@ -660,12 +691,12 @@ function renderLibrary() {
     playlists.forEach(pl => {
         const div = document.createElement('div');
         div.className = 'lib-item' + (currentSection === `playlist:${pl.id}` ? ' active' : '');
-        const coverHTML = pl.tracks.length > 0 && pl.tracks[0].img
-            ? `<img src="${pl.tracks[0].img}" alt="">`
-            : `<span style="font-size:1.4rem">🎵</span>`;
+
+        // ── Pochette mosaïque ──
+        const coverHTML = buildCoverHTML(pl.tracks, pl.color, '100%');
 
         div.innerHTML = `
-            <div class="lib-item-thumb" style="background:${pl.color}">${coverHTML}</div>
+            <div class="lib-item-thumb" style="background:${pl.color};overflow:hidden;">${coverHTML}</div>
             <div class="lib-item-info">
                 <span class="lib-item-name">${esc(pl.name)}</span>
                 <span class="lib-item-meta">Playlist · ${pl.tracks.length} piste${pl.tracks.length !== 1 ? 's' : ''}</span>
@@ -687,18 +718,15 @@ function renderLibrary() {
 function focusLibrary() {
     const sidebar = document.querySelector('.sidebar');
     const isOpen  = sidebar.classList.contains('mobile-open');
- 
+
     if (isOpen) {
         sidebar.classList.remove('mobile-open');
         return;
     }
- 
+
     sidebar.classList.add('mobile-open');
- 
-    // Re-render la bibliothèque pour s'assurer que les playlists sont à jour
     renderLibrary();
- 
-    // Fermer l'overlay quand on clique sur un item de playlist
+
     setTimeout(() => {
         sidebar.querySelectorAll('.lib-item').forEach(item => {
             item.addEventListener('click', () => {
@@ -706,8 +734,7 @@ function focusLibrary() {
             }, { once: true });
         });
     }, 50);
- 
-    // Fermer si on clique en dehors (sur le main content)
+
     const closeOnOutside = (e) => {
         if (!sidebar.contains(e.target) && !e.target.closest('.bottom-nav')) {
             sidebar.classList.remove('mobile-open');
@@ -743,12 +770,11 @@ function renderPlaylistView(id) {
     const pl = playlists.find(p => p.id === id);
     if (!pl) return;
 
-    const coverHTML = pl.tracks.length > 0 && pl.tracks[0].img
-        ? `<img src="${pl.tracks[0].img}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:6px;">`
-        : `<span style="font-size:3.5rem">🎵</span>`;
+    // ── Pochette mosaïque hero ──
+    const coverHTML = buildCoverHTML(pl.tracks, pl.color, '100%');
 
     document.getElementById('pl-hero').innerHTML = `
-        <div class="pl-hero-art" style="background:${pl.color}">${coverHTML}</div>
+        <div class="pl-hero-art" style="background:${pl.color};overflow:hidden;">${coverHTML}</div>
         <div class="pl-hero-info">
             <p class="pl-hero-type">Playlist</p>
             <h1 class="pl-hero-name" id="pl-editable-name" contenteditable="true" spellcheck="false">${esc(pl.name)}</h1>
@@ -812,19 +838,16 @@ function renderPlaylistView(id) {
                 <span class="pl-tr-dur">${t.duration || '--:--'}</span>
             </div>`;
 
-        // Drag souris
         div.addEventListener('dragstart', e => onPlDragStart(e, id, i));
         div.addEventListener('dragover',  onPlDragOver);
         div.addEventListener('drop',      e => onPlDrop(e, id, i));
         div.addEventListener('dragend',   onPlDragEnd);
 
-        // Drag tactile (depuis la poignée seulement)
         div.querySelector('.pl-drag-handle').addEventListener('touchstart',
             e => onPlTouchStart(e, id, i), { passive: true });
         div.addEventListener('touchmove', onPlTouchMove, { passive: false });
         div.addEventListener('touchend',  onPlTouchEnd);
 
-        // Clic → lecture
         div.addEventListener('click', () => {
             playTrack(t);
             queue = [...pl.tracks.slice(i + 1)];
@@ -846,15 +869,13 @@ function renderCurrentPlaylistHighlight() {
     const id = currentSection.split(':')[1];
     const pl = playlists.find(p => p.id === id);
     if (!pl) return;
- 
-    // ── Juste mettre à jour les classes, sans re-render ──
+
     document.querySelectorAll('.pl-track-row').forEach((row, i) => {
         const t = pl.tracks[i];
         const isPlaying = !!(t && currentTrack && t.id === currentTrack.id);
         row.classList.toggle('playing', isPlaying);
     });
- 
-    // ── Mettre à jour le nombre de pistes dans le hero sans toucher au layout ──
+
     const metaEl = document.querySelector('.pl-hero-meta');
     if (metaEl) {
         metaEl.innerHTML = `<strong>${pl.tracks.length}</strong> piste${pl.tracks.length !== 1 ? 's' : ''}`;
@@ -906,8 +927,12 @@ function openTrackDropdown(e, track) {
         html += `<p style="padding:8px 16px;font-size:.8rem;color:var(--text-sub);">Aucune playlist</p>`;
     } else {
         playlists.forEach(pl => {
+            // ── Pochette mosaïque dans le menu ──
+            const miniCover = buildCoverHTML(pl.tracks, pl.color, '20px');
             html += `<button class="dd-item" onclick="addTrackToPlaylist('${pl.id}', openDropdownTrack); closeDropdown()">
-                <div style="width:20px;height:20px;border-radius:3px;background:${pl.color};flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.6rem;">${pl.tracks[0]?.img ? `<img src="${pl.tracks[0].img}" style="width:100%;height:100%;object-fit:cover;border-radius:3px;">` : '🎵'}</div>
+                <div style="width:20px;height:20px;border-radius:3px;background:${pl.color};
+                    flex-shrink:0;display:flex;align-items:center;justify-content:center;
+                    font-size:.6rem;overflow:hidden;">${miniCover}</div>
                 ${esc(pl.name)}
             </button>`;
         });
@@ -1106,22 +1131,18 @@ window.addEventListener('resize', () => {
 /* ═══════════════════════════════════════
    TOGGLE BUTTONS — Shuffle / Repeat / Heart
 ════════════════════════════════════════ */
-
-// ── Shuffle ──
 document.getElementById('btn-shuffle').addEventListener('click', function () {
     shuffleMode = !shuffleMode;
     this.classList.toggle('active', shuffleMode);
     showToast(shuffleMode ? 'Lecture aléatoire activée' : 'Lecture aléatoire désactivée');
 });
 
-// ── Repeat ──
 document.getElementById('btn-repeat').addEventListener('click', function () {
     repeatMode = !repeatMode;
     this.classList.toggle('active', repeatMode);
     showToast(repeatMode ? 'Répétition activée' : 'Répétition désactivée');
 });
 
-// ── Heart ──
 document.getElementById('btn-heart').addEventListener('click', toggleLike);
 
 /* ═══════════════════════════════════════
@@ -1129,7 +1150,6 @@ document.getElementById('btn-heart').addEventListener('click', toggleLike);
 ════════════════════════════════════════ */
 document.getElementById('search-btn').addEventListener('click', searchMusic);
 
-// Lancer la recherche avec Entrée
 document.getElementById('search-input').addEventListener('keypress', e => {
     if (e.key === 'Enter') {
         clearTimeout(searchTimeout);
@@ -1137,7 +1157,6 @@ document.getElementById('search-input').addEventListener('keypress', e => {
     }
 });
 
-// Recherche automatique avec délai de 600ms après la frappe
 document.getElementById('search-input').addEventListener('input', function () {
     document.getElementById('search-clear').style.display = this.value ? 'inline-flex' : 'none';
     clearTimeout(searchTimeout);
@@ -1289,7 +1308,7 @@ async function toggleLike() {
     if (!currentTrack) { showToast('Aucun titre en cours'); return; }
     let pl = getLikesPlaylist();
     if (!pl) {
-        const id  = 'pl_likes_' + Date.now();
+        const id    = 'pl_likes_' + Date.now();
         const newPl = { id, name: LIKES_NAME, color: '#e91429', tracks: [], createdAt: Date.now() };
         playlists.push(newPl);
         renderLibrary();
@@ -1379,6 +1398,7 @@ function onTouchDragEnd(e) {
     touchSrcIndex = null;
     renderQueue();
 }
+
 /* ═══════════════════════════════════════
    INIT
 ════════════════════════════════════════ */
@@ -1395,7 +1415,7 @@ function toggleSleepDropdown() {
 }
 
 function setSleepTimer(minutes) {
-    cancelSleepTimer(true); // silencieux
+    cancelSleepTimer(true);
     sleepMinutes = minutes;
     sleepEndTime = Date.now() + minutes * 60 * 1000;
 
@@ -1432,7 +1452,6 @@ function cancelSleepTimer(silent = false) {
     });
     document.querySelectorAll('.sleep-dd-item').forEach(el => el.classList.remove('active'));
 
-    // badge mobile
     const badge = document.getElementById('sleep-badge');
     if (badge) badge.style.display = 'none';
 
@@ -1451,16 +1470,14 @@ function updateSleepCountdown() {
         if (el) el.textContent = +m === sleepMinutes ? str : '';
     });
 
-    // Badge mobile
-    const badge    = document.getElementById('sleep-badge');
-    const badgeTime= document.getElementById('sleep-badge-time');
+    const badge     = document.getElementById('sleep-badge');
+    const badgeTime = document.getElementById('sleep-badge-time');
     if (badge && badgeTime) {
         badge.style.display = 'inline-flex';
         badgeTime.textContent = str;
     }
 }
 
-// Fermer le dropdown sleep au clic extérieur
 document.addEventListener('click', e => {
     if (!e.target.closest('.sleep-timer-wrap')) {
         document.getElementById('sleep-dropdown')?.classList.remove('open');
