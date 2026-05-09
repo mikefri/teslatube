@@ -50,6 +50,16 @@ let searchTimeout        = null;        // délai de recherche auto
 // ── Palette ──
 const COLORS = ['#e91429','#503750','#0d73ec','#148a08','#e8115b','#27856a','#8d67ab','#1e3264','#f59b23','#0e6251'];
 
+let recentlyPlayed = JSON.parse(localStorage.getItem('ttRecent')   || '[]');
+let activeQueueTab = 'queue';
+let dragSrcIndex   = null;
+let touchSrcIndex  = null;
+let touchClone     = null;
+let touchOffsetY   = 0;
+const MAX_RECENT   = 30;
+const MAX_HISTORY  = 8;
+const LIKES_NAME   = '❤️ Titres likés';
+
 /* ═══════════════════════════════════════
    UTILS
 ════════════════════════════════════════ */
