@@ -1,9 +1,7 @@
 /* ═══════════════════════════════════════════════════
-   TESLATUBE — script.js  v2.7
-   Playlist management + Queue + Player + Firebase
-   Améliorations : cache recherche, shuffle/repeat
-   fonctionnels, confirmation suppression, recherche
-   avec délai, toast file vide, pochette mosaïque 2×2.
+   TESLATUBE — script.js  v3.0
+   + Page d'accueil (playlists + récents + historique)
+   + Vidéo plein écran (clic sur pochette player bar)
 ════════════════════════════════════════════════════ */
 
 // ── Firebase Config ──
@@ -35,7 +33,7 @@ let isMuted              = false;
 let lastVolume           = 100;
 let queueVisible         = true;
 let currentTrack         = null;
-let currentSection       = 'search';
+let currentSection       = 'home';
 let modalMode            = null;
 let openDropdownTrack    = null;
 let currentUserId        = null;
@@ -73,6 +71,9 @@ let plTouchSrcIndex  = null;
 let plTouchClone     = null;
 let plTouchOffsetY   = 0;
 
+// ── Video overlay ──
+let videoOverlayOpen = false;
+
 /* ═══════════════════════════════════════
    UTILS
 ════════════════════════════════════════ */
@@ -107,9 +108,6 @@ function formatViews(n) {
 
 /* ─────────────────────────────────────
    POCHETTE MOSAÏQUE 2×2
-   - 0 image       → emoji 🎵
-   - 1-3 images    → 1 image plein format
-   - 4+ images distinctes → grille 2×2
 ───────────────────────────────────── */
 function buildCoverHTML(tracks, color, size = '100%') {
     const imgs = [...new Set(
@@ -119,28 +117,16 @@ function buildCoverHTML(tracks, color, size = '100%') {
     if (imgs.length === 0) {
         return `<span style="font-size:1.4rem">🎵</span>`;
     }
-
     if (imgs.length < 4) {
-        return `<img src="${imgs[0]}" alt=""
-            style="width:${size};height:${size};object-fit:cover;display:block;">`;
+        return `<img src="${imgs[0]}" alt="" style="width:${size};height:${size};object-fit:cover;display:block;">`;
     }
-
-    // 4 images distinctes → mosaïque 2×2
-    return `<div style="
-        display:grid;
-        grid-template-columns:1fr 1fr;
-        grid-template-rows:1fr 1fr;
-        width:${size};height:${size};
-        gap:0;overflow:hidden;">
-        ${imgs.map(src =>
-            `<img src="${src}" alt=""
-                style="width:100%;height:100%;object-fit:cover;display:block;">`
-        ).join('')}
+    return `<div style="display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;width:${size};height:${size};gap:0;overflow:hidden;">
+        ${imgs.map(src => `<img src="${src}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;">`).join('')}
     </div>`;
 }
 
 /* ═══════════════════════════════════════
-   FIREBASE AUTH — Email/Password
+   FIREBASE AUTH
 ════════════════════════════════════════ */
 auth.onAuthStateChanged(user => {
     if (user) {
@@ -189,7 +175,7 @@ function logout() {
 }
 
 /* ═══════════════════════════════════════
-   FIRESTORE — Real-time playlist listener
+   FIRESTORE
 ════════════════════════════════════════ */
 function startPlaylistListener() {
     if (unsubscribePlaylists) unsubscribePlaylists();
@@ -201,10 +187,12 @@ function startPlaylistListener() {
     unsubscribePlaylists = ref.onSnapshot(snapshot => {
         playlists = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderLibrary();
-        if (currentSection.startsWith('playlist:')) {
+        if (currentSection === 'home') {
+            renderHome();
+        } else if (currentSection.startsWith('playlist:')) {
             const id = currentSection.split(':')[1];
             if (playlists.find(p => p.id === id)) renderPlaylistView(id);
-            else showSearch();
+            else showHome();
         }
     }, err => {
         console.error('Firestore listener error:', err);
@@ -217,12 +205,7 @@ async function savePlaylistToFirestore(pl) {
     try {
         await db.collection('users').doc(currentUserId)
                 .collection('playlists').doc(pl.id)
-                .set({
-                    name:      pl.name,
-                    color:     pl.color,
-                    tracks:    pl.tracks,
-                    createdAt: pl.createdAt
-                });
+                .set({ name: pl.name, color: pl.color, tracks: pl.tracks, createdAt: pl.createdAt });
     } catch (err) {
         console.error('Firestore write error:', err);
         showToast('Erreur de sauvegarde');
@@ -295,7 +278,54 @@ function handleTrackEnd() {
 }
 
 /* ═══════════════════════════════════════
-   SEARCH  (avec cache + délai auto)
+   VIDEO OVERLAY PLEIN ÉCRAN
+════════════════════════════════════════ */
+function openVideoOverlay() {
+    if (!currentTrack) return;
+
+    const overlay  = document.getElementById('video-overlay');
+    const screen   = document.getElementById('video-overlay-screen');
+    const playerEl = document.getElementById('player');
+
+    // Déplace l'iframe dans l'overlay — la lecture continue sans interruption
+    screen.appendChild(playerEl);
+    playerEl.style.cssText = 'width:100%;height:100%;position:static;display:block;';
+
+    // Infos titre/artiste
+    document.getElementById('video-overlay-title').textContent  = currentTrack.title;
+    document.getElementById('video-overlay-artist').textContent = currentTrack.artist;
+
+    overlay.style.display = 'flex';
+    requestAnimationFrame(() => overlay.classList.add('open'));
+    videoOverlayOpen = true;
+
+    document.addEventListener('keydown', onOverlayKey);
+}
+
+function closeVideoOverlay() {
+    if (!videoOverlayOpen) return;
+
+    const overlay  = document.getElementById('video-overlay');
+    const playerEl = document.getElementById('player');
+    const wrap     = document.getElementById('player-wrap');
+
+    // Remet le player à sa place cachée
+    wrap.appendChild(playerEl);
+    playerEl.style.cssText = '';
+
+    overlay.classList.remove('open');
+    setTimeout(() => { overlay.style.display = 'none'; }, 300);
+    videoOverlayOpen = false;
+
+    document.removeEventListener('keydown', onOverlayKey);
+}
+
+function onOverlayKey(e) {
+    if (e.key === 'Escape') closeVideoOverlay();
+}
+
+/* ═══════════════════════════════════════
+   SEARCH
 ════════════════════════════════════════ */
 async function searchMusic() {
     const q = document.getElementById('search-input').value.trim();
@@ -365,8 +395,7 @@ function renderResults(items, durMap = {}) {
                 <button class="card-options-btn" title="Plus d'options">•••</button>
             </div>
             <h4 title="${esc(t.title)}">${esc(t.title)}</h4>
-            <p>${esc(t.artist)}</p>
-        `;
+            <p>${esc(t.artist)}</p>`;
         div.addEventListener('click', () => playTrack(t));
         div.querySelector('.card-play-btn').addEventListener('click', e => { e.stopPropagation(); playTrack(t); });
         div.querySelector('.card-options-btn').addEventListener('click', e => { e.stopPropagation(); openTrackDropdown(e, t); });
@@ -397,6 +426,7 @@ function playTrack(t) {
 function updatePlayerBar(t) {
     document.getElementById('current-track-title').textContent  = t.title;
     document.getElementById('current-track-artist').textContent = t.artist;
+
     const imgEl   = document.getElementById('current-track-img');
     const pholder = document.getElementById('thumb-placeholder');
     if (t.img) {
@@ -406,6 +436,18 @@ function updatePlayerBar(t) {
     } else {
         imgEl.style.display   = 'none';
         pholder.style.display = 'flex';
+    }
+
+    // Pochette cliquable → ouvre la vidéo plein écran
+    const thumb = document.querySelector('.player-thumb');
+    thumb.style.cursor = 'pointer';
+    thumb.title = 'Voir la vidéo';
+    thumb.onclick = () => { if (currentTrack) openVideoOverlay(); };
+
+    // Met à jour l'overlay si ouvert
+    if (videoOverlayOpen) {
+        document.getElementById('video-overlay-title').textContent  = t.title;
+        document.getElementById('video-overlay-artist').textContent = t.artist;
     }
 }
 
@@ -598,11 +640,9 @@ function renderQueue() {
         div.addEventListener('dragover',  onDragOver);
         div.addEventListener('drop',      onDrop);
         div.addEventListener('dragend',   onDragEnd);
-
         div.querySelector('.queue-drag').addEventListener('touchstart', e => onTouchDragStart(e, i), { passive: true });
         div.addEventListener('touchmove',  onTouchDragMove, { passive: false });
         div.addEventListener('touchend',   onTouchDragEnd);
-
         div.addEventListener('click', () => {
             queue.splice(i, 1); saveQueue(); playTrack(t); renderQueue();
         });
@@ -649,7 +689,7 @@ async function deletePlaylist(id) {
     if (!confirm(`Supprimer la playlist « ${pl.name} » ? Cette action est irréversible.`)) return;
     playlists = playlists.filter(p => p.id !== id);
     renderLibrary();
-    if (currentSection === `playlist:${id}`) showSearch();
+    if (currentSection === `playlist:${id}`) showHome();
     await deletePlaylistFromFirestore(id);
     showToast('Playlist supprimée');
 }
@@ -691,10 +731,7 @@ function renderLibrary() {
     playlists.forEach(pl => {
         const div = document.createElement('div');
         div.className = 'lib-item' + (currentSection === `playlist:${pl.id}` ? ' active' : '');
-
-        // ── Pochette mosaïque ──
         const coverHTML = buildCoverHTML(pl.tracks, pl.color, '100%');
-
         div.innerHTML = `
             <div class="lib-item-thumb" style="background:${pl.color};overflow:hidden;">${coverHTML}</div>
             <div class="lib-item-info">
@@ -703,8 +740,7 @@ function renderLibrary() {
             </div>
             <button class="lib-item-more" title="Options">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M4.5 13.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm15 0a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm-7.5 0a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"/></svg>
-            </button>
-        `;
+            </button>`;
         div.addEventListener('click', () => openPlaylistView(pl.id));
         div.querySelector('.lib-item-more').addEventListener('click', e => {
             e.stopPropagation();
@@ -714,27 +750,17 @@ function renderLibrary() {
     });
 }
 
-/* ── Bibliothèque mobile ── */
 function focusLibrary() {
     const sidebar = document.querySelector('.sidebar');
     const isOpen  = sidebar.classList.contains('mobile-open');
-
-    if (isOpen) {
-        sidebar.classList.remove('mobile-open');
-        return;
-    }
-
+    if (isOpen) { sidebar.classList.remove('mobile-open'); return; }
     sidebar.classList.add('mobile-open');
     renderLibrary();
-
     setTimeout(() => {
         sidebar.querySelectorAll('.lib-item').forEach(item => {
-            item.addEventListener('click', () => {
-                sidebar.classList.remove('mobile-open');
-            }, { once: true });
+            item.addEventListener('click', () => sidebar.classList.remove('mobile-open'), { once: true });
         });
     }, 50);
-
     const closeOnOutside = (e) => {
         if (!sidebar.contains(e.target) && !e.target.closest('.bottom-nav')) {
             sidebar.classList.remove('mobile-open');
@@ -750,12 +776,121 @@ function filterLib(type, btn) {
 }
 
 /* ═══════════════════════════════════════
+   PAGE D'ACCUEIL
+════════════════════════════════════════ */
+function showHome() {
+    currentSection = 'home';
+    document.querySelector('.sidebar')?.classList.remove('mobile-open');
+    document.getElementById('home-section').style.display          = 'block';
+    document.getElementById('search-section').style.display        = 'none';
+    document.getElementById('playlist-view-section').style.display = 'none';
+    document.querySelector('.main-content').style.background =
+        'linear-gradient(180deg, #0f2a1a 0%, var(--bg-surface) 420px)';
+    renderHome();
+    renderLibrary();
+    document.querySelector('.main-content').scrollTop = 0;
+}
+
+function renderHome() {
+    const container = document.getElementById('home-content');
+    if (!container) return;
+
+    const user    = auth.currentUser;
+    const prenom  = user?.email?.split('@')[0] || 'vous';
+    const recent  = recentlyPlayed.slice(0, 12);
+    const history = JSON.parse(localStorage.getItem('ttHistory') || '[]');
+    const isEmpty = playlists.length === 0 && recent.length === 0;
+
+    const h     = new Date().getHours();
+    const salut = h < 12 ? 'Bonjour' : h < 18 ? 'Bon après-midi' : 'Bonsoir';
+
+    let html = `<div class="home-hero">
+        <h1 class="home-greeting">${salut}, <span>${esc(prenom)}</span> 👋</h1>
+    </div>`;
+
+    if (isEmpty) {
+        html += `<div class="home-onboarding">
+            <div class="home-onboarding-icon">🎵</div>
+            <h2>Bienvenue sur TeslaTube</h2>
+            <p>Recherchez vos artistes préférés, créez des playlists et retrouvez tout ici.</p>
+            <button class="btn-pill-white" onclick="focusSearch()">Commencer à écouter</button>
+        </div>`;
+    } else {
+
+        // ── Playlists ──
+        if (playlists.length > 0) {
+            html += `<div class="home-section">
+                <div class="home-section-header">
+                    <h2 class="home-section-title">Vos playlists</h2>
+                    <button class="home-see-all" onclick="focusLibrary()">Tout voir</button>
+                </div>
+                <div class="home-grid">`;
+            playlists.slice(0, 6).forEach(pl => {
+                const cover = buildCoverHTML(pl.tracks, pl.color, '100%');
+                html += `<div class="home-pl-card" onclick="openPlaylistView('${pl.id}')">
+                    <div class="home-pl-art" style="background:${pl.color};overflow:hidden;">${cover}</div>
+                    <span class="home-pl-name">${esc(pl.name)}</span>
+                    <span class="home-pl-meta">${pl.tracks.length} piste${pl.tracks.length !== 1 ? 's' : ''}</span>
+                </div>`;
+            });
+            html += `</div></div>`;
+        }
+
+        // ── Récemment joués ──
+        if (recent.length > 0) {
+            html += `<div class="home-section">
+                <h2 class="home-section-title">Récemment joués</h2>
+                <div class="home-scroll-row">`;
+            recent.forEach(t => {
+                const tJson = esc(JSON.stringify(t));
+                html += `<div class="home-track-card" onclick='playTrack(${JSON.stringify(t)})'>
+                    <div class="home-track-img-wrap">
+                        <img src="${esc(t.img)}" alt="" loading="lazy">
+                        <div class="home-track-play">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="#000"><path d="M7.05 3.606l13.49 7.788a.7.7 0 010 1.212L7.05 20.394A.7.7 0 016 19.788V4.212a.7.7 0 011.05-.606z"/></svg>
+                        </div>
+                    </div>
+                    <span class="home-track-title">${esc(t.title)}</span>
+                    <span class="home-track-artist">${esc(t.artist)}</span>
+                </div>`;
+            });
+            html += `</div></div>`;
+        }
+
+        // ── Recherches récentes ──
+        if (history.length > 0) {
+            html += `<div class="home-section">
+                <h2 class="home-section-title">Recherches récentes</h2>
+                <div class="home-chips">`;
+            history.forEach(q => {
+                html += `<button class="home-chip" onclick="replaySearchFromHome(${JSON.stringify(esc(q))})">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M10.533 1.279c-5.18 0-9.407 4.226-9.407 9.407 0 5.18 4.226 9.407 9.407 9.407 2.19 0 4.2-.755 5.8-2.02l4.996 4.997a1 1 0 001.414-1.414l-4.994-4.994a9.368 9.368 0 002.191-6.976 9.407 9.407 0 00-9.407-9.407zm-7.407 9.407a7.407 7.407 0 1114.814 0 7.407 7.407 0 01-14.814 0z"/></svg>
+                    ${esc(q)}
+                </button>`;
+            });
+            html += `</div></div>`;
+        }
+    }
+
+    container.innerHTML = html;
+}
+
+function replaySearchFromHome(q) {
+    showSearch();
+    document.getElementById('search-input').value = q;
+    document.getElementById('search-clear').style.display = 'inline-flex';
+    document.getElementById('results-placeholder').style.display = 'none';
+    searchMusic();
+}
+
+/* ═══════════════════════════════════════
    PLAYLIST VIEW
 ════════════════════════════════════════ */
 function openPlaylistView(id) {
     currentSection = `playlist:${id}`;
-    document.getElementById('search-section').style.display         = 'none';
-    document.getElementById('playlist-view-section').style.display  = 'block';
+    document.getElementById('home-section').style.display          = 'none';
+    document.getElementById('search-section').style.display        = 'none';
+    document.getElementById('playlist-view-section').style.display = 'block';
     const pl = playlists.find(p => p.id === id);
     if (pl) {
         document.querySelector('.main-content').style.background =
@@ -770,9 +905,7 @@ function renderPlaylistView(id) {
     const pl = playlists.find(p => p.id === id);
     if (!pl) return;
 
-    // ── Pochette mosaïque hero ──
     const coverHTML = buildCoverHTML(pl.tracks, pl.color, '100%');
-
     document.getElementById('pl-hero').innerHTML = `
         <div class="pl-hero-art" style="background:${pl.color};overflow:hidden;">${coverHTML}</div>
         <div class="pl-hero-info">
@@ -842,24 +975,19 @@ function renderPlaylistView(id) {
         div.addEventListener('dragover',  onPlDragOver);
         div.addEventListener('drop',      e => onPlDrop(e, id, i));
         div.addEventListener('dragend',   onPlDragEnd);
-
-        div.querySelector('.pl-drag-handle').addEventListener('touchstart',
-            e => onPlTouchStart(e, id, i), { passive: true });
+        div.querySelector('.pl-drag-handle').addEventListener('touchstart', e => onPlTouchStart(e, id, i), { passive: true });
         div.addEventListener('touchmove', onPlTouchMove, { passive: false });
         div.addEventListener('touchend',  onPlTouchEnd);
-
         div.addEventListener('click', () => {
             playTrack(t);
             queue = [...pl.tracks.slice(i + 1)];
             saveQueue();
             renderQueue();
         });
-
         div.querySelector('.pl-tr-remove').addEventListener('click', e => {
             e.stopPropagation();
             removeTrackFromPlaylist(id, i);
         });
-
         listEl.appendChild(div);
     });
 }
@@ -869,17 +997,12 @@ function renderCurrentPlaylistHighlight() {
     const id = currentSection.split(':')[1];
     const pl = playlists.find(p => p.id === id);
     if (!pl) return;
-
     document.querySelectorAll('.pl-track-row').forEach((row, i) => {
         const t = pl.tracks[i];
-        const isPlaying = !!(t && currentTrack && t.id === currentTrack.id);
-        row.classList.toggle('playing', isPlaying);
+        row.classList.toggle('playing', !!(t && currentTrack && t.id === currentTrack.id));
     });
-
     const metaEl = document.querySelector('.pl-hero-meta');
-    if (metaEl) {
-        metaEl.innerHTML = `<strong>${pl.tracks.length}</strong> piste${pl.tracks.length !== 1 ? 's' : ''}`;
-    }
+    if (metaEl) metaEl.innerHTML = `<strong>${pl.tracks.length}</strong> piste${pl.tracks.length !== 1 ? 's' : ''}`;
 }
 
 function playPlaylist(id) {
@@ -920,19 +1043,15 @@ function openTrackDropdown(e, track) {
             Lire maintenant
         </button>
         <div class="dd-separator"></div>
-        <div class="dd-sub-label">Ajouter à une playlist</div>
-    `;
+        <div class="dd-sub-label">Ajouter à une playlist</div>`;
 
     if (playlists.length === 0) {
         html += `<p style="padding:8px 16px;font-size:.8rem;color:var(--text-sub);">Aucune playlist</p>`;
     } else {
         playlists.forEach(pl => {
-            // ── Pochette mosaïque dans le menu ──
             const miniCover = buildCoverHTML(pl.tracks, pl.color, '20px');
             html += `<button class="dd-item" onclick="addTrackToPlaylist('${pl.id}', openDropdownTrack); closeDropdown()">
-                <div style="width:20px;height:20px;border-radius:3px;background:${pl.color};
-                    flex-shrink:0;display:flex;align-items:center;justify-content:center;
-                    font-size:.6rem;overflow:hidden;">${miniCover}</div>
+                <div style="width:20px;height:20px;border-radius:3px;background:${pl.color};flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.6rem;overflow:hidden;">${miniCover}</div>
                 ${esc(pl.name)}
             </button>`;
         });
@@ -943,8 +1062,7 @@ function openTrackDropdown(e, track) {
         <button class="dd-item" onclick="openCreateModalAndAdd(openDropdownTrack); closeDropdown()">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M11 11V3h2v8h8v2h-8v8h-2v-8H3v-2z"/></svg>
             Nouvelle playlist
-        </button>
-    `;
+        </button>`;
 
     inner.innerHTML = html;
     positionDropdown(menu, e);
@@ -976,8 +1094,7 @@ function openPlaylistOptionsDropdown(e, playlistId) {
         <button class="dd-item dd-danger" onclick="deletePlaylist('${pl.id}'); closeDropdown()">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M5.25 5.25a.75.75 0 000 1.5h.75v11.25A2.25 2.25 0 008.25 20.25h7.5A2.25 2.25 0 0018 18V6.75h.75a.75.75 0 000-1.5H5.25zm2.25 1.5h9V18a.75.75 0 01-.75.75h-7.5a.75.75 0 01-.75-.75V6.75zm2.25-3a.75.75 0 000 1.5h3a.75.75 0 000-1.5h-3z"/></svg>
             Supprimer la playlist
-        </button>
-    `;
+        </button>`;
     positionDropdown(menu, e);
     menu.classList.add('open');
 }
@@ -988,10 +1105,8 @@ function positionDropdown(menu, e) {
     document.body.appendChild(menu);
     const x  = e.clientX, y = e.clientY;
     const mw = 220, mh = menu.scrollHeight || 300;
-    const left = Math.min(x, window.innerWidth  - mw - 8);
-    const top  = Math.min(y, window.innerHeight - mh - 8);
-    menu.style.left = `${left}px`;
-    menu.style.top  = `${top}px`;
+    menu.style.left = `${Math.min(x, window.innerWidth  - mw - 8)}px`;
+    menu.style.top  = `${Math.min(y, window.innerHeight - mh - 8)}px`;
 }
 
 function closeDropdown() {
@@ -1000,7 +1115,7 @@ function closeDropdown() {
 
 document.addEventListener('click', () => closeDropdown());
 document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { closeDropdown(); closeModal(); }
+    if (e.key === 'Escape') { closeDropdown(); closeModal(); closeVideoOverlay(); }
 });
 
 /* ═══════════════════════════════════════
@@ -1070,8 +1185,9 @@ document.getElementById('modal-input').addEventListener('keydown', e => {
 function showSearch() {
     currentSection = 'search';
     document.querySelector('.sidebar')?.classList.remove('mobile-open');
-    document.getElementById('search-section').style.display         = 'block';
-    document.getElementById('playlist-view-section').style.display  = 'none';
+    document.getElementById('home-section').style.display          = 'none';
+    document.getElementById('search-section').style.display        = 'block';
+    document.getElementById('playlist-view-section').style.display = 'none';
     document.querySelector('.main-content').style.background =
         'linear-gradient(180deg, #1a3a28 0%, var(--bg-surface) 38%)';
     renderLibrary();
@@ -1129,7 +1245,7 @@ window.addEventListener('resize', () => {
 });
 
 /* ═══════════════════════════════════════
-   TOGGLE BUTTONS — Shuffle / Repeat / Heart
+   TOGGLE BUTTONS
 ════════════════════════════════════════ */
 document.getElementById('btn-shuffle').addEventListener('click', function () {
     shuffleMode = !shuffleMode;
@@ -1151,10 +1267,7 @@ document.getElementById('btn-heart').addEventListener('click', toggleLike);
 document.getElementById('search-btn').addEventListener('click', searchMusic);
 
 document.getElementById('search-input').addEventListener('keypress', e => {
-    if (e.key === 'Enter') {
-        clearTimeout(searchTimeout);
-        searchMusic();
-    }
+    if (e.key === 'Enter') { clearTimeout(searchTimeout); searchMusic(); }
 });
 
 document.getElementById('search-input').addEventListener('input', function () {
@@ -1251,9 +1364,7 @@ function renderRecentlyPlayed() {
     const container = document.getElementById('queue-list');
     const countEl   = document.getElementById('playlist-count');
     const n = recentlyPlayed.length;
-    countEl.textContent = n === 0
-        ? 'Aucun titre récent'
-        : `${n} titre${n > 1 ? 's' : ''} récent${n > 1 ? 's' : ''}`;
+    countEl.textContent = n === 0 ? 'Aucun titre récent' : `${n} titre${n > 1 ? 's' : ''} récent${n > 1 ? 's' : ''}`;
     container.innerHTML = '';
     if (n === 0) {
         container.innerHTML = `<p style="padding:20px 16px;font-size:.83rem;color:var(--text-sub);">Les titres lus apparaîtront ici.</p>`;
@@ -1288,7 +1399,7 @@ function switchQueueTab(tab, btn) {
 }
 
 /* ═══════════════════════════════════════
-   LIKES — Playlist "❤️ Titres likés"
+   LIKES
 ════════════════════════════════════════ */
 function getLikesPlaylist() {
     return playlists.find(p => p.name === LIKES_NAME);
@@ -1329,7 +1440,7 @@ async function toggleLike() {
 }
 
 /* ═══════════════════════════════════════
-   DRAG & DROP — Souris (desktop)
+   DRAG & DROP — Queue souris
 ════════════════════════════════════════ */
 function onDragStart(e) {
     dragSrcIndex = +e.currentTarget.dataset.index;
@@ -1357,7 +1468,7 @@ function onDragEnd() {
 }
 
 /* ═══════════════════════════════════════
-   DRAG & DROP — Toucher (mobile)
+   DRAG & DROP — Queue tactile
 ════════════════════════════════════════ */
 function onTouchDragStart(e, index) {
     touchSrcIndex = index;
@@ -1365,10 +1476,7 @@ function onTouchDragStart(e, index) {
     const r  = el.getBoundingClientRect();
     touchOffsetY = e.touches[0].clientY - r.top;
     touchClone = el.cloneNode(true);
-    touchClone.style.cssText = `position:fixed;pointer-events:none;z-index:9999;opacity:.85;
-        width:${r.width}px;top:${r.top}px;left:${r.left}px;
-        background:var(--bg-card-hover);border-radius:var(--r-sm);
-        box-shadow:0 8px 32px rgba(0,0,0,.6);`;
+    touchClone.style.cssText = `position:fixed;pointer-events:none;z-index:9999;opacity:.85;width:${r.width}px;top:${r.top}px;left:${r.left}px;background:var(--bg-card-hover);border-radius:var(--r-sm);box-shadow:0 8px 32px rgba(0,0,0,.6);`;
     document.body.appendChild(touchClone);
     el.style.opacity = '.25';
 }
@@ -1391,10 +1499,7 @@ function onTouchDragEnd(e) {
         saveQueue();
     }
     if (touchClone) { touchClone.remove(); touchClone = null; }
-    document.querySelectorAll('.queue-item').forEach(el => {
-        el.style.opacity = '';
-        el.classList.remove('drag-over');
-    });
+    document.querySelectorAll('.queue-item').forEach(el => { el.style.opacity = ''; el.classList.remove('drag-over'); });
     touchSrcIndex = null;
     renderQueue();
 }
@@ -1405,7 +1510,7 @@ function onTouchDragEnd(e) {
 setBarFill('volume-bar', 100);
 renderQueue();
 renderSearchPlaceholder();
-// renderLibrary() appelé automatiquement par le listener Firestore
+showHome();
 
 /* ═══════════════════════════════════════
    SLEEP TIMER
@@ -1418,21 +1523,17 @@ function setSleepTimer(minutes) {
     cancelSleepTimer(true);
     sleepMinutes = minutes;
     sleepEndTime = Date.now() + minutes * 60 * 1000;
-
     sleepTimerTimeout = setTimeout(() => {
         if (player && player.pauseVideo) player.pauseVideo();
         showToast('😴 Bonne nuit — lecture en pause');
         cancelSleepTimer(true);
     }, minutes * 60 * 1000);
-
     sleepTimerInterval = setInterval(updateSleepCountdown, 1000);
     updateSleepCountdown();
-
     document.getElementById('btn-sleep').classList.add('active');
     document.getElementById('sleep-cancel-btn').style.display = 'flex';
     document.querySelectorAll('.sleep-dd-item').forEach(el => el.classList.remove('active'));
     document.getElementById(`sdi-${minutes}`)?.classList.add('active');
-
     const label = minutes < 60 ? `${minutes} min` : '1 h';
     showToast(`😴 Lecture s'arrête dans ${label}`);
     document.getElementById('sleep-dropdown').classList.remove('open');
@@ -1442,7 +1543,6 @@ function cancelSleepTimer(silent = false) {
     clearTimeout(sleepTimerTimeout);
     clearInterval(sleepTimerInterval);
     sleepTimerTimeout = sleepTimerInterval = sleepEndTime = sleepMinutes = null;
-
     document.getElementById('btn-sleep')?.classList.remove('active');
     const cancelBtn = document.getElementById('sleep-cancel-btn');
     if (cancelBtn) cancelBtn.style.display = 'none';
@@ -1451,10 +1551,8 @@ function cancelSleepTimer(silent = false) {
         if (el) el.textContent = '';
     });
     document.querySelectorAll('.sleep-dd-item').forEach(el => el.classList.remove('active'));
-
     const badge = document.getElementById('sleep-badge');
     if (badge) badge.style.display = 'none';
-
     if (!silent) showToast('Timer de sommeil annulé');
 }
 
@@ -1464,12 +1562,10 @@ function updateSleepCountdown() {
     const mins = Math.floor(remaining / 60000);
     const secs = Math.floor((remaining % 60000) / 1000);
     const str  = `${mins}:${String(secs).padStart(2, '0')}`;
-
     ['15','30','60'].forEach(m => {
         const el = document.getElementById(`sc-${m}`);
         if (el) el.textContent = +m === sleepMinutes ? str : '';
     });
-
     const badge     = document.getElementById('sleep-badge');
     const badgeTime = document.getElementById('sleep-badge-time');
     if (badge && badgeTime) {
@@ -1485,7 +1581,7 @@ document.addEventListener('click', e => {
 });
 
 /* ═══════════════════════════════════════
-   PLAYLIST — DRAG & DROP (souris)
+   PLAYLIST — DRAG & DROP souris
 ════════════════════════════════════════ */
 function onPlDragStart(e, playlistId, index) {
     plDragSrcIndex   = index;
@@ -1511,13 +1607,12 @@ async function onPlDrop(e, playlistId, targetIndex) {
     await savePlaylistToFirestore(pl);
 }
 function onPlDragEnd() {
-    document.querySelectorAll('.pl-track-row')
-        .forEach(el => el.classList.remove('pl-dragging', 'pl-drag-over'));
+    document.querySelectorAll('.pl-track-row').forEach(el => el.classList.remove('pl-dragging', 'pl-drag-over'));
     plDragSrcIndex = null;
 }
 
 /* ═══════════════════════════════════════
-   PLAYLIST — DRAG & DROP (tactile)
+   PLAYLIST — DRAG & DROP tactile
 ════════════════════════════════════════ */
 function onPlTouchStart(e, playlistId, index) {
     plTouchSrcIndex  = index;
@@ -1526,10 +1621,7 @@ function onPlTouchStart(e, playlistId, index) {
     const r  = el.getBoundingClientRect();
     plTouchOffsetY = e.touches[0].clientY - r.top;
     plTouchClone = el.cloneNode(true);
-    plTouchClone.style.cssText = `position:fixed;pointer-events:none;z-index:9999;opacity:.85;
-        width:${r.width}px;top:${r.top}px;left:${r.left}px;
-        background:var(--bg-card-hover);border-radius:var(--r-sm);
-        box-shadow:0 8px 32px rgba(0,0,0,.6);`;
+    plTouchClone.style.cssText = `position:fixed;pointer-events:none;z-index:9999;opacity:.85;width:${r.width}px;top:${r.top}px;left:${r.left}px;background:var(--bg-card-hover);border-radius:var(--r-sm);box-shadow:0 8px 32px rgba(0,0,0,.6);`;
     document.body.appendChild(plTouchClone);
     el.style.opacity = '.25';
 }
@@ -1539,15 +1631,13 @@ function onPlTouchMove(e) {
     const y = e.touches[0].clientY;
     plTouchClone.style.top = (y - plTouchOffsetY) + 'px';
     document.querySelectorAll('.pl-track-row').forEach(el => el.classList.remove('pl-drag-over'));
-    document.elementFromPoint(e.touches[0].clientX, y)
-        ?.closest('.pl-track-row')?.classList.add('pl-drag-over');
+    document.elementFromPoint(e.touches[0].clientX, y)?.closest('.pl-track-row')?.classList.add('pl-drag-over');
 }
 async function onPlTouchEnd(e) {
     if (plTouchSrcIndex === null) return;
     const y = e.changedTouches[0].clientY;
     const target      = document.elementFromPoint(e.changedTouches[0].clientX, y)?.closest('.pl-track-row');
     const targetIndex = target ? +target.dataset.index : -1;
-
     if (targetIndex >= 0 && targetIndex !== plTouchSrcIndex && plDragPlaylistId) {
         const pl = playlists.find(p => p.id === plDragPlaylistId);
         if (pl) {
@@ -1557,46 +1647,41 @@ async function onPlTouchEnd(e) {
             await savePlaylistToFirestore(pl);
         }
     }
-
     if (plTouchClone) { plTouchClone.remove(); plTouchClone = null; }
-    document.querySelectorAll('.pl-track-row').forEach(el => {
-        el.style.opacity = '';
-        el.classList.remove('pl-drag-over', 'pl-dragging');
-    });
+    document.querySelectorAll('.pl-track-row').forEach(el => { el.style.opacity = ''; el.classList.remove('pl-drag-over', 'pl-dragging'); });
     const id = plDragPlaylistId;
     plTouchSrcIndex = plDragPlaylistId = null;
     if (id) renderPlaylistView(id);
 }
-/* ── Détection plateforme ── */
+
+/* ═══════════════════════════════════════
+   DÉTECTION PLATEFORME + AD TIPS
+════════════════════════════════════════ */
 function detectPlatform() {
     const ua = navigator.userAgent;
-    if (/android/i.test(ua))         return 'android';
+    if (/android/i.test(ua))          return 'android';
     if (/ipad|iphone|ipod/i.test(ua)) return 'ios';
     return 'desktop';
 }
- 
+
 function openAdTipsModal() {
     const overlay = document.getElementById('adtips-overlay');
     overlay.classList.add('open');
-    // Active l'onglet correspondant à la plateforme
     const platform = detectPlatform();
     const btn = document.querySelector(`.adtab[onclick*="${platform}"]`);
     if (btn) switchAdTab(platform, btn);
-    // Fermer en cliquant l'overlay
     overlay.addEventListener('click', e => {
         if (e.target === overlay) closeAdTipsModal();
     }, { once: true });
 }
- 
+
 function closeAdTipsModal() {
     document.getElementById('adtips-overlay').classList.remove('open');
 }
- 
+
 function switchAdTab(tab, btn) {
-    // Tabs
     document.querySelectorAll('.adtab').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    // Panels
     ['android','ios','desktop'].forEach(t => {
         const el = document.getElementById(`tab-${t}`);
         if (el) el.style.display = t === tab ? 'block' : 'none';
