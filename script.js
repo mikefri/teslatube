@@ -1,9 +1,8 @@
 /* ═══════════════════════════════════════════════════
-   TESLATUBE — script.js  v2.7
+   TESLATUBE — script.js  v2.8
    Playlist management + Queue + Player + Firebase
-   Améliorations : cache recherche, shuffle/repeat
-   fonctionnels, confirmation suppression, recherche
-   avec délai, toast file vide, pochette mosaïque 2×2.
+   Nouveauté v2.8 : bouton play playlist synchronisé
+   (bascule ▶ / ⏸ selon état de lecture)
 ════════════════════════════════════════════════════ */
 
 // ── Firebase Config ──
@@ -107,9 +106,6 @@ function formatViews(n) {
 
 /* ─────────────────────────────────────
    POCHETTE MOSAÏQUE 2×2
-   - 0 image       → emoji 🎵
-   - 1-3 images    → 1 image plein format
-   - 4+ images distinctes → grille 2×2
 ───────────────────────────────────── */
 function buildCoverHTML(tracks, color, size = '100%') {
     const imgs = [...new Set(
@@ -125,7 +121,6 @@ function buildCoverHTML(tracks, color, size = '100%') {
             style="width:${size};height:${size};object-fit:cover;display:block;">`;
     }
 
-    // 4 images distinctes → mosaïque 2×2
     return `<div style="
         display:grid;
         grid-template-columns:1fr 1fr;
@@ -137,6 +132,59 @@ function buildCoverHTML(tracks, color, size = '100%') {
                 style="width:100%;height:100%;object-fit:cover;display:block;">`
         ).join('')}
     </div>`;
+}
+
+/* ═══════════════════════════════════════
+   BOUTON PLAY PLAYLIST — helpers
+════════════════════════════════════════ */
+
+/** Retourne true si un titre de la playlist id est en cours de lecture */
+function isPlaylistPlaying(id) {
+    if (!currentTrack) return false;
+    const pl = playlists.find(p => p.id === id);
+    if (!pl) return false;
+    return isPlaying && pl.tracks.some(t => t.id === currentTrack.id);
+}
+
+/** SVG icône pause (deux barres vertes) */
+function iconPause(size = 22) {
+    return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="#000">
+        <path d="M5.7 3a.7.7 0 00-.7.7v16.6a.7.7 0 00.7.7h2.6a.7.7 0 00.7-.7V3.7a.7.7 0 00-.7-.7H5.7zm10 0a.7.7 0 00-.7.7v16.6a.7.7 0 00.7.7h2.6a.7.7 0 00.7-.7V3.7a.7.7 0 00-.7-.7h-2.6z"/>
+    </svg>`;
+}
+
+/** SVG icône play (triangle) */
+function iconPlay(size = 22) {
+    return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="#000">
+        <path d="M7.05 3.606l13.49 7.788a.7.7 0 010 1.212L7.05 20.394A.7.7 0 016 19.788V4.212a.7.7 0 011.05-.606z"/>
+    </svg>`;
+}
+
+/** Met à jour visuellement le bouton play de la playlist ouverte */
+function updatePlaylistPlayBtn() {
+    if (!currentSection.startsWith('playlist:')) return;
+    const id  = currentSection.split(':')[1];
+    const btn = document.getElementById(`btn-play-playlist-${id}`);
+    if (!btn) return;
+    btn.innerHTML = isPlaylistPlaying(id) ? iconPause() : iconPlay();
+}
+
+/** Bascule play/pause pour la playlist */
+function togglePlaylistPlay(id) {
+    if (isPlaylistPlaying(id)) {
+        // La playlist joue → mettre en pause
+        if (player && player.pauseVideo) player.pauseVideo();
+    } else if (isPlaying === false && currentTrack) {
+        // Un titre de cette playlist est paused → reprendre
+        const pl = playlists.find(p => p.id === id);
+        if (pl && pl.tracks.some(t => t.id === currentTrack.id)) {
+            if (player && player.playVideo) player.playVideo();
+        } else {
+            playPlaylist(id);
+        }
+    } else {
+        playPlaylist(id);
+    }
 }
 
 /* ═══════════════════════════════════════
@@ -413,6 +461,8 @@ function setPlayState(playing) {
     isPlaying = playing;
     document.getElementById('icon-play').style.display  = playing ? 'none'  : 'block';
     document.getElementById('icon-pause').style.display = playing ? 'block' : 'none';
+    // ── Sync bouton play de la playlist ouverte ──
+    updatePlaylistPlayBtn();
 }
 
 function togglePlay() {
@@ -692,7 +742,6 @@ function renderLibrary() {
         const div = document.createElement('div');
         div.className = 'lib-item' + (currentSection === `playlist:${pl.id}` ? ' active' : '');
 
-        // ── Pochette mosaïque ──
         const coverHTML = buildCoverHTML(pl.tracks, pl.color, '100%');
 
         div.innerHTML = `
@@ -770,8 +819,8 @@ function renderPlaylistView(id) {
     const pl = playlists.find(p => p.id === id);
     if (!pl) return;
 
-    // ── Pochette mosaïque hero ──
-    const coverHTML = buildCoverHTML(pl.tracks, pl.color, '100%');
+    const coverHTML   = buildCoverHTML(pl.tracks, pl.color, '100%');
+    const nowPlaying  = isPlaylistPlaying(id);
 
     document.getElementById('pl-hero').innerHTML = `
         <div class="pl-hero-art" style="background:${pl.color};overflow:hidden;">${coverHTML}</div>
@@ -790,12 +839,13 @@ function renderPlaylistView(id) {
         if (e.key === 'Enter') { e.preventDefault(); nameEl.blur(); }
     });
 
+    // ── Bouton play avec id unique pour pouvoir le mettre à jour ──
     document.getElementById('pl-controls').innerHTML = `
-        <button class="btn-play-big" onclick="playPlaylist('${id}')">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="#000"><path d="M7.05 3.606l13.49 7.788a.7.7 0 010 1.212L7.05 20.394A.7.7 0 016 19.788V4.212a.7.7 0 011.05-.606z"/></svg>
+        <button class="btn-play-big" id="btn-play-playlist-${id}" onclick="togglePlaylistPlay('${id}')">
+            ${nowPlaying ? iconPause() : iconPlay()}
         </button>
         <button class="btn-shuffle-big" onclick="shufflePlaylist('${id}')" title="Lecture aléatoire">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M16.464 3.162A1 1 0 0117 4v1.5l1.293-1.293a1 1 0 011.414 1.414L17.414 7.5 19 7.5a1 1 0 110 2l-3 .001a1 1 0 01-.707-.294L13.586 7.5h-1.672A6.972 6.972 0 0110 9.207V7.586l.293-.293A4.972 4.972 0 0113.914 6H16V4a1 1 0 01.464-.838z"/></svg>
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M16.464 3.162A1 1 0 0117 4v1.5l1.293-1.293a1 1 0 011.414 1.414L17.414 7.5 19 7.5a1 1 0 110 2l-3 .001a1 1 0 01-.707-.294L13.586 7.5h-1.672A6.972 6.972 0 0110 9.207V7.586l.293-.293A4.972 4.972 0 0113.914 6H16V4a1 1 0 01.464-.838zM10 14.793a6.972 6.972 0 01-1.914 1.621L7.793 16.707 8 16.914V19a1 1 0 01-2 0v-1.5l-1.293 1.293a1 1 0 01-1.414-1.414L4.586 16.5 3 16.5a1 1 0 110-2l3-.001a1 1 0 01.707.294l1.707 1.707h1.672A6.972 6.972 0 0112 14.793v2.035l-.293.293A4.972 4.972 0 018.086 18H6v2a1 1 0 01-1.464.836zM17 16v1.5l1.707-1.707a1 1 0 011.414 0l.586.586a1 1 0 010 1.414L19 19.5l-1.293 1.293A1 1 0 0116 20v-2.086a4.972 4.972 0 01-3.414-2.121l-.293-.293V13.5a6.972 6.972 0 011.914 1.621L15.5 16.414l.207-.207A1 1 0 0117 16zM7 8v-2a1 1 0 00-2 0v1.5L3.707 6.207a1 1 0 00-1.414 1.414L3.586 8.914 3 8.914a1 1 0 000 2l3 .001a1 1 0 00.707-.294L8.414 9.914H10.086A6.972 6.972 0 0110 8.293v-.707A4.972 4.972 0 017.086 10H5V8z"/></svg>
         </button>
         <button class="btn-ctrl-big" title="Options" onclick="openPlaylistOptionsDropdown(event,'${id}')">
             <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M4.5 13.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm15 0a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm-7.5 0a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"/></svg>
@@ -872,14 +922,17 @@ function renderCurrentPlaylistHighlight() {
 
     document.querySelectorAll('.pl-track-row').forEach((row, i) => {
         const t = pl.tracks[i];
-        const isPlaying = !!(t && currentTrack && t.id === currentTrack.id);
-        row.classList.toggle('playing', isPlaying);
+        const playing = !!(t && currentTrack && t.id === currentTrack.id);
+        row.classList.toggle('playing', playing);
     });
 
     const metaEl = document.querySelector('.pl-hero-meta');
     if (metaEl) {
         metaEl.innerHTML = `<strong>${pl.tracks.length}</strong> piste${pl.tracks.length !== 1 ? 's' : ''}`;
     }
+
+    // Sync bouton play
+    updatePlaylistPlayBtn();
 }
 
 function playPlaylist(id) {
@@ -927,7 +980,6 @@ function openTrackDropdown(e, track) {
         html += `<p style="padding:8px 16px;font-size:.8rem;color:var(--text-sub);">Aucune playlist</p>`;
     } else {
         playlists.forEach(pl => {
-            // ── Pochette mosaïque dans le menu ──
             const miniCover = buildCoverHTML(pl.tracks, pl.color, '20px');
             html += `<button class="dd-item" onclick="addTrackToPlaylist('${pl.id}', openDropdownTrack); closeDropdown()">
                 <div style="width:20px;height:20px;border-radius:3px;background:${pl.color};
@@ -1405,7 +1457,6 @@ function onTouchDragEnd(e) {
 setBarFill('volume-bar', 100);
 renderQueue();
 renderSearchPlaceholder();
-// renderLibrary() appelé automatiquement par le listener Firestore
 
 /* ═══════════════════════════════════════
    SLEEP TIMER
@@ -1567,36 +1618,33 @@ async function onPlTouchEnd(e) {
     plTouchSrcIndex = plDragPlaylistId = null;
     if (id) renderPlaylistView(id);
 }
+
 /* ── Détection plateforme ── */
 function detectPlatform() {
     const ua = navigator.userAgent;
-    if (/android/i.test(ua))         return 'android';
+    if (/android/i.test(ua))          return 'android';
     if (/ipad|iphone|ipod/i.test(ua)) return 'ios';
     return 'desktop';
 }
- 
+
 function openAdTipsModal() {
     const overlay = document.getElementById('adtips-overlay');
     overlay.classList.add('open');
-    // Active l'onglet correspondant à la plateforme
     const platform = detectPlatform();
     const btn = document.querySelector(`.adtab[onclick*="${platform}"]`);
     if (btn) switchAdTab(platform, btn);
-    // Fermer en cliquant l'overlay
     overlay.addEventListener('click', e => {
         if (e.target === overlay) closeAdTipsModal();
     }, { once: true });
 }
- 
+
 function closeAdTipsModal() {
     document.getElementById('adtips-overlay').classList.remove('open');
 }
- 
+
 function switchAdTab(tab, btn) {
-    // Tabs
     document.querySelectorAll('.adtab').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    // Panels
     ['android','ios','desktop'].forEach(t => {
         const el = document.getElementById(`tab-${t}`);
         if (el) el.style.display = t === tab ? 'block' : 'none';
