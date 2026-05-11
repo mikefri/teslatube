@@ -287,11 +287,9 @@ function openVideoOverlay() {
     const screen   = document.getElementById('video-overlay-screen');
     const playerEl = document.getElementById('player');
 
-    // Déplace l'iframe dans l'overlay — la lecture continue sans interruption
     screen.appendChild(playerEl);
     playerEl.style.cssText = 'width:100%;height:100%;position:static;display:block;';
 
-    // Infos titre/artiste
     document.getElementById('video-overlay-title').textContent  = currentTrack.title;
     document.getElementById('video-overlay-artist').textContent = currentTrack.artist;
 
@@ -309,7 +307,6 @@ function closeVideoOverlay() {
     const playerEl = document.getElementById('player');
     const wrap     = document.getElementById('player-wrap');
 
-    // Remet le player à sa place cachée
     wrap.appendChild(playerEl);
     playerEl.style.cssText = '';
 
@@ -438,23 +435,32 @@ function updatePlayerBar(t) {
         pholder.style.display = 'flex';
     }
 
-    // Pochette cliquable → ouvre la vidéo plein écran
     const thumb = document.querySelector('.player-thumb');
     thumb.style.cursor = 'pointer';
     thumb.title = 'Voir la vidéo';
     thumb.onclick = () => { if (currentTrack) openVideoOverlay(); };
 
-    // Met à jour l'overlay si ouvert
     if (videoOverlayOpen) {
         document.getElementById('video-overlay-title').textContent  = t.title;
         document.getElementById('video-overlay-artist').textContent = t.artist;
     }
 }
 
+/* ═══════════════════════════════════════
+   SET PLAY STATE — met à jour TOUS les boutons
+════════════════════════════════════════ */
 function setPlayState(playing) {
     isPlaying = playing;
+
+    // Bouton play/pause principal (player bar)
     document.getElementById('icon-play').style.display  = playing ? 'none'  : 'block';
     document.getElementById('icon-pause').style.display = playing ? 'block' : 'none';
+
+    // Bouton play/pause de la vue playlist (si visible)
+    if (currentSection.startsWith('playlist:')) {
+        const id = currentSection.split(':')[1];
+        updatePlaylistPlayButton(id);
+    }
 }
 
 function togglePlay() {
@@ -488,6 +494,56 @@ function prevTrack() {
         playTrack(historyStack.pop());
     } else if (player && player.seekTo) {
         player.seekTo(0, true);
+    }
+}
+
+/* ═══════════════════════════════════════
+   PLAYLIST PLAY BUTTON — play/pause toggle
+════════════════════════════════════════ */
+
+/**
+ * Détermine si une piste de la playlist est actuellement en cours de lecture.
+ */
+function isPlayingPlaylist(id) {
+    const pl = playlists.find(p => p.id === id);
+    if (!pl || !currentTrack) return false;
+    return isPlaying && !!pl.tracks.find(t => t.id === currentTrack.id);
+}
+
+/**
+ * Met à jour visuellement le bouton play/pause de la vue playlist.
+ */
+function updatePlaylistPlayButton(id) {
+    const playIcon  = document.getElementById('pl-play-icon');
+    const pauseIcon = document.getElementById('pl-pause-icon');
+    if (!playIcon || !pauseIcon) return;
+
+    const playing = isPlayingPlaylist(id);
+    playIcon.style.display  = playing ? 'none' : '';
+    pauseIcon.style.display = playing ? ''     : 'none';
+}
+
+/**
+ * Gère le clic sur le bouton vert de la vue playlist :
+ *  - si une piste de la playlist joue → pause
+ *  - si une piste de la playlist est en pause → reprend
+ *  - sinon → lance la playlist depuis le début
+ */
+function togglePlaylistPlay(id) {
+    const pl = playlists.find(p => p.id === id);
+    if (!pl || pl.tracks.length === 0) return;
+
+    const pl_has_current = currentTrack && pl.tracks.find(t => t.id === currentTrack.id);
+
+    if (pl_has_current && isPlaying) {
+        // En cours → pause
+        if (player && player.pauseVideo) player.pauseVideo();
+    } else if (pl_has_current && !isPlaying) {
+        // En pause → reprend
+        if (player && player.playVideo) player.playVideo();
+    } else {
+        // Pas dans cette playlist → lance depuis le début
+        playPlaylist(id);
     }
 }
 
@@ -842,7 +898,6 @@ function renderHome() {
                 <h2 class="home-section-title">Récemment joués</h2>
                 <div class="home-scroll-row">`;
             recent.forEach(t => {
-                const tJson = esc(JSON.stringify(t));
                 html += `<div class="home-track-card" onclick='playTrack(${JSON.stringify(t)})'>
                     <div class="home-track-img-wrap">
                         <img src="${esc(t.img)}" alt="" loading="lazy">
@@ -923,9 +978,18 @@ function renderPlaylistView(id) {
         if (e.key === 'Enter') { e.preventDefault(); nameEl.blur(); }
     });
 
+    // ── Bouton play/pause playlist ──
+    // Détermine l'état initial (une piste de cette playlist joue-t-elle déjà ?)
+    const playing = isPlayingPlaylist(id);
+
     document.getElementById('pl-controls').innerHTML = `
-        <button class="btn-play-big" onclick="playPlaylist('${id}')">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="#000"><path d="M7.05 3.606l13.49 7.788a.7.7 0 010 1.212L7.05 20.394A.7.7 0 016 19.788V4.212a.7.7 0 011.05-.606z"/></svg>
+        <button class="btn-play-big" id="btn-pl-play" onclick="togglePlaylistPlay('${id}')">
+            <svg id="pl-play-icon" viewBox="0 0 24 24" width="22" height="22" fill="#000" style="${playing ? 'display:none' : ''}">
+                <path d="M7.05 3.606l13.49 7.788a.7.7 0 010 1.212L7.05 20.394A.7.7 0 016 19.788V4.212a.7.7 0 011.05-.606z"/>
+            </svg>
+            <svg id="pl-pause-icon" viewBox="0 0 24 24" width="22" height="22" fill="#000" style="${playing ? '' : 'display:none'}">
+                <path d="M5.7 3a.7.7 0 00-.7.7v16.6a.7.7 0 00.7.7h2.6a.7.7 0 00.7-.7V3.7a.7.7 0 00-.7-.7H5.7zm10 0a.7.7 0 00-.7.7v16.6a.7.7 0 00.7.7h2.6a.7.7 0 00.7-.7V3.7a.7.7 0 00-.7-.7h-2.6z"/>
+            </svg>
         </button>
         <button class="btn-shuffle-big" onclick="shufflePlaylist('${id}')" title="Lecture aléatoire">
             <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M16.464 3.162A1 1 0 0117 4v1.5l1.293-1.293a1 1 0 011.414 1.414L17.414 7.5 19 7.5a1 1 0 110 2l-3 .001a1 1 0 01-.707-.294L13.586 7.5h-1.672A6.972 6.972 0 0110 9.207V7.586l.293-.293A4.972 4.972 0 0113.914 6H16V4a1 1 0 01.464-.838z"/></svg>
@@ -943,16 +1007,16 @@ function renderPlaylistView(id) {
     }
 
     pl.tracks.forEach((t, i) => {
-        const playing = currentTrack && currentTrack.id === t.id;
+        const isTrackPlaying = currentTrack && currentTrack.id === t.id;
         const div = document.createElement('div');
-        div.className = 'pl-track-row' + (playing ? ' playing' : '');
+        div.className = 'pl-track-row' + (isTrackPlaying ? ' playing' : '');
         div.dataset.index = i;
         div.draggable = true;
         div.innerHTML = `
             <span class="pl-drag-handle" title="Réorganiser">⠿⠿</span>
             <div class="pl-tr-num">
                 <span>${i + 1}</span>
-                <div class="pl-tr-bars" style="${playing ? 'display:flex' : ''}">
+                <div class="pl-tr-bars" style="${isTrackPlaying ? 'display:flex' : ''}">
                     <span style="height:8px"></span><span style="height:14px"></span><span style="height:6px"></span>
                 </div>
             </div>
@@ -1003,6 +1067,9 @@ function renderCurrentPlaylistHighlight() {
     });
     const metaEl = document.querySelector('.pl-hero-meta');
     if (metaEl) metaEl.innerHTML = `<strong>${pl.tracks.length}</strong> piste${pl.tracks.length !== 1 ? 's' : ''}`;
+
+    // Met à jour le bouton play/pause
+    updatePlaylistPlayButton(id);
 }
 
 function playPlaylist(id) {
