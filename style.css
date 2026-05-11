@@ -1481,3 +1481,93 @@ a      { text-decoration: none; color: inherit; }
 }
 @keyframes adFadeIn  { from { opacity:0; } to { opacity:1; } }
 @keyframes adSlideUp { from { opacity:0; transform:translateY(16px) scale(.97); } to { opacity:1; transform:none; } }
+
+/* ═══════════════════════════════════════
+   VIDEO OVERLAY PLEIN ÉCRAN
+════════════════════════════════════════ */
+#video-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 500;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,.0);
+    transition: background .3s var(--ease);
+}
+#video-overlay.open {
+    background: rgba(0,0,0,.95);
+}
+
+#video-overlay-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    width: 100%;
+    max-width: 900px;
+    padding: 60px 24px 24px;
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity .3s var(--ease), transform .3s var(--ease);
+}
+#video-overlay.open #video-overlay-content {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+#video-overlay-close {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(255,255,255,.1);
+    border: none;
+    color: #fff;
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: background var(--t) var(--ease);
+    z-index: 10;
+}
+#video-overlay-close:hover { background: rgba(255,255,255,.2); }
+
+#video-overlay-screen {
+    width: 100%;
+    aspect-ratio: 16/9;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #000;
+}
+#video-overlay-screen #player {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+#video-overlay-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
+}
+#video-overlay-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #fff;
+}
+#video-overlay-artist {
+    font-size: .85rem;
+    color: rgba(255,255,255,.5);
+}
+
+/* Mobile */
+@media (max-width: 639px) {
+    #video-overlay-content {
+        padding: 50px 12px 120px;
+        justify-content: center;
+    }
+    #video-overlay-screen {
+        border-radius: 8px;
+    }
+}
