@@ -83,6 +83,23 @@ function fmtTime(sec) {
     return `${m}:${s < 10 ? '0' : ''}${s}`;
 }
 
+function calcTotalDuration(tracks) {
+    let total = 0;
+    tracks.forEach(t => {
+        if (!t.duration || t.duration === '--:--') return;
+        const parts = t.duration.split(':').map(Number);
+        if (parts.length === 3) total += parts[0] * 3600 + parts[1] * 60 + parts[2];
+        else if (parts.length === 2) total += parts[0] * 60 + parts[1];
+    });
+    const h = Math.floor(total / 3600);
+    const m = Math.floor((total % 3600) / 60);
+    const s = Math.floor(total % 60);
+    if (h > 0) return `${h} h ${m > 0 ? m + ' min' : ''}`.trim();
+    if (m > 0) return `${m} min ${s > 0 ? s + ' sec' : ''}`.trim();
+    return `${s} sec`;
+}
+
+
 function esc(str) {
     return String(str)
         .replace(/&/g, '&amp;')
@@ -1028,7 +1045,7 @@ function renderPlaylistView(id) {
         <div class="pl-hero-info">
             <p class="pl-hero-type">Playlist</p>
             <h1 class="pl-hero-name" id="pl-editable-name" contenteditable="true" spellcheck="false">${esc(pl.name)}</h1>
-            <p class="pl-hero-meta"><strong>${pl.tracks.length}</strong> piste${pl.tracks.length !== 1 ? 's' : ''}</p>
+            <p class="pl-hero-meta"><strong>${pl.tracks.length}</strong> piste${pl.tracks.length !== 1 ? 's' : ''} · ${calcTotalDuration(pl.tracks)}</p>
         </div>`;
 
     const nameEl = document.getElementById('pl-editable-name');
@@ -1122,7 +1139,7 @@ function renderCurrentPlaylistHighlight() {
     });
     const metaEl = document.querySelector('.pl-hero-meta');
     if (metaEl) {
-        metaEl.innerHTML = `<strong>${pl.tracks.length}</strong> piste${pl.tracks.length !== 1 ? 's' : ''}`;
+        metaEl.innerHTML = `<strong>${pl.tracks.length}</strong> piste${pl.tracks.length !== 1 ? 's' : ''} · ${calcTotalDuration(pl.tracks)}`;
     }
 
     // Sync bouton play
