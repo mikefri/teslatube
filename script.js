@@ -1,9 +1,6 @@
 /* ═══════════════════════════════════════════════════
-   TESLATUBE — script.js  v2.8
-   Playlist management + Queue + Player + Firebase
-   Nouveauté v2.8 : bouton play playlist synchronisé
-   (bascule ▶ / ⏸ selon état de lecture)
-════════════════════════════════════════════════════ */
+   TESLATUBE — script.js  v3.4
+   ════════════════════════════════════════════════════ */
 
 // ── Firebase Config ──
 const firebaseConfig = {
