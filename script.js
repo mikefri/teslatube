@@ -1,5 +1,9 @@
 /* ═══════════════════════════════════════════════════
-   TESLATUB — script.js  v3.4
+   TESLATUB — script.js  v3.5
+   Fixes :
+     1. Player YouTube pas encore prêt → pendingTrack
+     2. togglePlaylistPlay défini en double → une seule version
+     3. openPlaylistView avant chargement Firestore → guard + retry
    ════════════════════════════════════════════════════ */
 
 // ── Firebase Config ──
@@ -22,26 +26,28 @@ const db   = firebase.firestore();
 
 // ── State ──
 let player;
-let queue                = JSON.parse(localStorage.getItem('teslatubeQueue')) || [];
-let playlists            = [];
-let historyStack         = [];
+let playerReady              = false;   // FIX 1 : flag readiness
+let pendingTrack             = null;    // FIX 1 : action différée
+let queue                    = JSON.parse(localStorage.getItem('teslatubeQueue')) || [];
+let playlists                = [];
+let playlistsLoaded          = false;   // FIX 3 : Firestore prêt ?
+let pendingPlaylistOpen      = null;    // FIX 3 : id en attente d'ouverture
+let historyStack             = [];
 let progressInterval;
-let isPlaying            = false;
-let isMuted              = false;
-let lastVolume           = 100;
-let queueVisible         = true;
-let currentTrack         = null;
-let currentSection       = 'home';
-let modalMode            = null;
-let openDropdownTrack    = null;
-let currentUserId        = null;
-let unsubscribePlaylists = null;
-
-// ── Nouveaux états ──
-let shuffleMode          = false;
-let repeatMode           = false;
-const searchCache        = new Map();
-let searchTimeout        = null;
+let isPlaying                = false;
+let isMuted                  = false;
+let lastVolume               = 100;
+let queueVisible             = true;
+let currentTrack             = null;
+let currentSection           = 'home';
+let modalMode                = null;
+let openDropdownTrack        = null;
+let currentUserId            = null;
+let unsubscribePlaylists     = null;
+let shuffleMode              = false;
+let repeatMode               = false;
+const searchCache            = new Map();
+let searchTimeout            = null;
 
 // ── Palette ──
 const COLORS = ['#e91429','#503750','#0d73ec','#148a08','#e8115b','#27856a','#8d67ab','#1e3264','#f59b23','#0e6251'];
@@ -96,7 +102,6 @@ function calcTotalDuration(tracks) {
     return `${s} sec`;
 }
 
-
 function esc(str) {
     return String(str)
         .replace(/&/g, '&amp;')
@@ -125,81 +130,29 @@ function formatViews(n) {
    POCHETTE MOSAÏQUE 2×2
 ───────────────────────────────────── */
 function buildCoverHTML(tracks, color, size = '100%') {
-    const imgs = [...new Set(
-        tracks.map(t => t.img).filter(Boolean)
-    )].slice(0, 4);
-
-    if (imgs.length === 0) {
-        return `<span style="font-size:1.4rem">🎵</span>`;
-    }
+    const imgs = [...new Set(tracks.map(t => t.img).filter(Boolean))].slice(0, 4);
+    if (imgs.length === 0) return `<span style="font-size:1.4rem">🎵</span>`;
     if (imgs.length < 4) {
         return `<img src="${imgs[0]}" alt="" style="width:${size};height:${size};object-fit:cover;display:block;">`;
     }
-
-    return `<div style="
-        display:grid;
-        grid-template-columns:1fr 1fr;
-        grid-template-rows:1fr 1fr;
-        width:${size};height:${size};
-        gap:0;overflow:hidden;">
-        ${imgs.map(src =>
-            `<img src="${src}" alt=""
-                style="width:100%;height:100%;object-fit:cover;display:block;">`
-        ).join('')}
+    return `<div style="display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;width:${size};height:${size};gap:0;overflow:hidden;">
+        ${imgs.map(src => `<img src="${src}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;">`).join('')}
     </div>`;
 }
 
 /* ═══════════════════════════════════════
-   BOUTON PLAY PLAYLIST — helpers
+   ICÔNES SVG
 ════════════════════════════════════════ */
-
-/** Retourne true si un titre de la playlist id est en cours de lecture */
-function isPlaylistPlaying(id) {
-    if (!currentTrack) return false;
-    const pl = playlists.find(p => p.id === id);
-    if (!pl) return false;
-    return isPlaying && pl.tracks.some(t => t.id === currentTrack.id);
-}
-
-/** SVG icône pause (deux barres vertes) */
 function iconPause(size = 22) {
     return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="#000">
         <path d="M5.7 3a.7.7 0 00-.7.7v16.6a.7.7 0 00.7.7h2.6a.7.7 0 00.7-.7V3.7a.7.7 0 00-.7-.7H5.7zm10 0a.7.7 0 00-.7.7v16.6a.7.7 0 00.7.7h2.6a.7.7 0 00.7-.7V3.7a.7.7 0 00-.7-.7h-2.6z"/>
     </svg>`;
 }
 
-/** SVG icône play (triangle) */
 function iconPlay(size = 22) {
     return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="#000">
         <path d="M7.05 3.606l13.49 7.788a.7.7 0 010 1.212L7.05 20.394A.7.7 0 016 19.788V4.212a.7.7 0 011.05-.606z"/>
     </svg>`;
-}
-
-/** Met à jour visuellement le bouton play de la playlist ouverte */
-function updatePlaylistPlayBtn() {
-    if (!currentSection.startsWith('playlist:')) return;
-    const id  = currentSection.split(':')[1];
-    const btn = document.getElementById(`btn-play-playlist-${id}`);
-    if (!btn) return;
-    btn.innerHTML = isPlaylistPlaying(id) ? iconPause() : iconPlay();
-}
-
-/** Bascule play/pause pour la playlist */
-function togglePlaylistPlay(id) {
-    if (isPlaylistPlaying(id)) {
-        // La playlist joue → mettre en pause
-        if (player && player.pauseVideo) player.pauseVideo();
-    } else if (isPlaying === false && currentTrack) {
-        // Un titre de cette playlist est paused → reprendre
-        const pl = playlists.find(p => p.id === id);
-        if (pl && pl.tracks.some(t => t.id === currentTrack.id)) {
-            if (player && player.playVideo) player.playVideo();
-        } else {
-            playPlaylist(id);
-        }
-    } else {
-        playPlaylist(id);
-    }
 }
 
 /* ═══════════════════════════════════════
@@ -262,14 +215,24 @@ function startPlaylistListener() {
                   .orderBy('createdAt', 'asc');
 
     unsubscribePlaylists = ref.onSnapshot(snapshot => {
-        playlists = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        playlists       = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        playlistsLoaded = true;   // FIX 3 : Firestore est prêt
+
         renderLibrary();
+
         if (currentSection === 'home') {
             renderHome();
         } else if (currentSection.startsWith('playlist:')) {
             const id = currentSection.split(':')[1];
             if (playlists.find(p => p.id === id)) renderPlaylistView(id);
             else showHome();
+        }
+
+        // FIX 3 : si une ouverture était en attente, on l'exécute maintenant
+        if (pendingPlaylistOpen) {
+            const id = pendingPlaylistOpen;
+            pendingPlaylistOpen = null;
+            openPlaylistView(id);
         }
     }, err => {
         console.error('Firestore listener error:', err);
@@ -324,7 +287,17 @@ function onYouTubeIframeAPIReady() {
             rel:            0
         },
         events: {
-            onReady:       () => setVolume(100),
+            onReady: () => {
+                setVolume(100);
+                playerReady = true;   // FIX 1 : player prêt
+
+                // FIX 1 : si un titre attendait d'être joué, on le lance maintenant
+                if (pendingTrack) {
+                    const t      = pendingTrack;
+                    pendingTrack = null;
+                    playTrack(t);
+                }
+            },
             onStateChange: onPlayerStateChange,
             onError:       onPlayerError
         }
@@ -481,7 +454,13 @@ function renderResults(items, durMap = {}) {
    PLAYBACK
 ════════════════════════════════════════ */
 function playTrack(t) {
-    if (!player || !player.loadVideoById) return;
+    // FIX 1 : si le player n'est pas encore initialisé, on mémorise le titre
+    if (!playerReady || !player || !player.loadVideoById) {
+        pendingTrack = t;
+        showToast('Chargement du lecteur…');
+        return;
+    }
+
     if (currentTrack) historyStack.push(currentTrack);
     currentTrack = t;
     player.loadVideoById(t.id);
@@ -524,15 +503,12 @@ function updatePlayerBar(t) {
 }
 
 /* ═══════════════════════════════════════
-   SET PLAY STATE — met à jour TOUS les boutons
+   SET PLAY STATE
 ════════════════════════════════════════ */
 function setPlayState(playing) {
     isPlaying = playing;
-
-    // Bouton play/pause principal (player bar)
     document.getElementById('icon-play').style.display  = playing ? 'none'  : 'block';
     document.getElementById('icon-pause').style.display = playing ? 'block' : 'none';
-    // ── Sync bouton play de la playlist ouverte ──
     updatePlaylistPlayBtn();
 }
 
@@ -571,51 +547,44 @@ function prevTrack() {
 }
 
 /* ═══════════════════════════════════════
-   PLAYLIST PLAY BUTTON — play/pause toggle
+   PLAYLIST PLAY BUTTON
+   FIX 2 : une seule définition propre
 ════════════════════════════════════════ */
 
-/**
- * Détermine si une piste de la playlist est actuellement en cours de lecture.
- */
-function isPlayingPlaylist(id) {
+/** Retourne true si un titre de la playlist est en cours de lecture */
+function isPlaylistPlaying(id) {
+    if (!currentTrack) return false;
     const pl = playlists.find(p => p.id === id);
-    if (!pl || !currentTrack) return false;
-    return isPlaying && !!pl.tracks.find(t => t.id === currentTrack.id);
+    if (!pl) return false;
+    return isPlaying && pl.tracks.some(t => t.id === currentTrack.id);
 }
 
-/**
- * Met à jour visuellement le bouton play/pause de la vue playlist.
- */
-function updatePlaylistPlayButton(id) {
-    const playIcon  = document.getElementById('pl-play-icon');
-    const pauseIcon = document.getElementById('pl-pause-icon');
-    if (!playIcon || !pauseIcon) return;
-
-    const playing = isPlayingPlaylist(id);
-    playIcon.style.display  = playing ? 'none' : '';
-    pauseIcon.style.display = playing ? ''     : 'none';
+/** Met à jour visuellement le bouton play/pause de la vue playlist ouverte */
+function updatePlaylistPlayBtn() {
+    if (!currentSection.startsWith('playlist:')) return;
+    const id  = currentSection.split(':')[1];
+    const btn = document.getElementById(`btn-play-playlist-${id}`);
+    if (!btn) return;
+    btn.innerHTML = isPlaylistPlaying(id) ? iconPause() : iconPlay();
 }
 
 /**
  * Gère le clic sur le bouton vert de la vue playlist :
- *  - si une piste de la playlist joue → pause
- *  - si une piste de la playlist est en pause → reprend
- *  - sinon → lance la playlist depuis le début
+ *  - joue  → pause
+ *  - pause → reprend
+ *  - pas dans cette playlist → lance depuis le début
  */
 function togglePlaylistPlay(id) {
     const pl = playlists.find(p => p.id === id);
     if (!pl || pl.tracks.length === 0) return;
 
-    const pl_has_current = currentTrack && pl.tracks.find(t => t.id === currentTrack.id);
+    const plHasCurrent = currentTrack && pl.tracks.some(t => t.id === currentTrack.id);
 
-    if (pl_has_current && isPlaying) {
-        // En cours → pause
+    if (plHasCurrent && isPlaying) {
         if (player && player.pauseVideo) player.pauseVideo();
-    } else if (pl_has_current && !isPlaying) {
-        // En pause → reprend
+    } else if (plHasCurrent && !isPlaying) {
         if (player && player.playVideo) player.playVideo();
     } else {
-        // Pas dans cette playlist → lance depuis le début
         playPlaylist(id);
     }
 }
@@ -946,8 +915,6 @@ function renderHome() {
             <button class="btn-pill-white" onclick="focusSearch()">Commencer à écouter</button>
         </div>`;
     } else {
-
-        // ── Playlists ──
         if (playlists.length > 0) {
             html += `<div class="home-section">
                 <div class="home-section-header">
@@ -966,7 +933,6 @@ function renderHome() {
             html += `</div></div>`;
         }
 
-        // ── Récemment joués ──
         if (recent.length > 0) {
             html += `<div class="home-section">
                 <h2 class="home-section-title">Récemment joués</h2>
@@ -986,7 +952,6 @@ function renderHome() {
             html += `</div></div>`;
         }
 
-        // ── Recherches récentes ──
         if (history.length > 0) {
             html += `<div class="home-section">
                 <h2 class="home-section-title">Recherches récentes</h2>
@@ -1014,17 +979,28 @@ function replaySearchFromHome(q) {
 
 /* ═══════════════════════════════════════
    PLAYLIST VIEW
+   FIX 3 : guard si Firestore pas encore chargé
 ════════════════════════════════════════ */
 function openPlaylistView(id) {
+    // FIX 3 : si les playlists ne sont pas encore chargées depuis Firestore
+    if (!playlistsLoaded) {
+        pendingPlaylistOpen = id;
+        showToast('Chargement de la bibliothèque…');
+        return;
+    }
+
+    const pl = playlists.find(p => p.id === id);
+    if (!pl) {
+        showToast('Playlist introuvable');
+        return;
+    }
+
     currentSection = `playlist:${id}`;
     document.getElementById('home-section').style.display          = 'none';
     document.getElementById('search-section').style.display        = 'none';
     document.getElementById('playlist-view-section').style.display = 'block';
-    const pl = playlists.find(p => p.id === id);
-    if (pl) {
-        document.querySelector('.main-content').style.background =
-            `linear-gradient(180deg, ${pl.color}88 0%, var(--bg-surface) 38%)`;
-    }
+    document.querySelector('.main-content').style.background =
+        `linear-gradient(180deg, ${pl.color}88 0%, var(--bg-surface) 38%)`;
     renderPlaylistView(id);
     renderLibrary();
     document.querySelector('.main-content').scrollTop = 0;
@@ -1034,8 +1010,8 @@ function renderPlaylistView(id) {
     const pl = playlists.find(p => p.id === id);
     if (!pl) return;
 
-    const coverHTML   = buildCoverHTML(pl.tracks, pl.color, '100%');
-    const nowPlaying  = isPlaylistPlaying(id);
+    const coverHTML  = buildCoverHTML(pl.tracks, pl.color, '100%');
+    const nowPlaying = isPlaylistPlaying(id);
 
     document.getElementById('pl-hero').innerHTML = `
         <div class="pl-hero-art" style="background:${pl.color};overflow:hidden;">${coverHTML}</div>
@@ -1054,7 +1030,6 @@ function renderPlaylistView(id) {
         if (e.key === 'Enter') { e.preventDefault(); nameEl.blur(); }
     });
 
-    // ── Bouton play avec id unique pour pouvoir le mettre à jour ──
     document.getElementById('pl-controls').innerHTML = `
         <button class="btn-play-big" id="btn-play-playlist-${id}" onclick="togglePlaylistPlay('${id}')">
             ${nowPlaying ? iconPause() : iconPlay()}
@@ -1138,8 +1113,6 @@ function renderCurrentPlaylistHighlight() {
     if (metaEl) {
         metaEl.innerHTML = `<strong>${pl.tracks.length}</strong> piste${pl.tracks.length !== 1 ? 's' : ''} · ${calcTotalDuration(pl.tracks)}`;
     }
-
-    // Sync bouton play
     updatePlaylistPlayBtn();
 }
 
@@ -1791,7 +1764,9 @@ async function onPlTouchEnd(e) {
     if (id) renderPlaylistView(id);
 }
 
-/* ── Détection plateforme ── */
+/* ═══════════════════════════════════════
+   MODALE ANTI-PUBS
+════════════════════════════════════════ */
 function detectPlatform() {
     const ua = navigator.userAgent;
     if (/android/i.test(ua))          return 'android';
