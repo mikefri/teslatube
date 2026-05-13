@@ -1,9 +1,10 @@
 /* ═══════════════════════════════════════════════════
-   TESLATUB — script.js  v3.5
+   TESLATUB — script.js  v3.6
    Fixes :
      1. Player YouTube pas encore prêt → pendingTrack
      2. togglePlaylistPlay défini en double → une seule version
      3. openPlaylistView avant chargement Firestore → guard + retry
+     4. Nettoyage titres / artistes YouTube (entités HTML, suffixes parasites, VEVO…)
    ════════════════════════════════════════════════════ */
 
 // ── Firebase Config ──
@@ -26,12 +27,12 @@ const db   = firebase.firestore();
 
 // ── State ──
 let player;
-let playerReady              = false;   // FIX 1 : flag readiness
-let pendingTrack             = null;    // FIX 1 : action différée
+let playerReady              = false;
+let pendingTrack             = null;
 let queue                    = JSON.parse(localStorage.getItem('teslatubeQueue')) || [];
 let playlists                = [];
-let playlistsLoaded          = false;   // FIX 3 : Firestore prêt ?
-let pendingPlaylistOpen      = null;    // FIX 3 : id en attente d'ouverture
+let playlistsLoaded          = false;
+let pendingPlaylistOpen      = null;
 let historyStack             = [];
 let progressInterval;
 let isPlaying                = false;
@@ -48,8 +49,8 @@ let shuffleMode              = false;
 let repeatMode               = false;
 const searchCache            = new Map();
 let searchTimeout            = null;
-let nextPageToken = null;   // pagination YouTube
-let lastQuery     = '';     // requête en cours
+let nextPageToken = null;
+let lastQuery     = '';
 
 // ── Palette ──
 const COLORS = ['#e91429','#503750','#0d73ec','#148a08','#e8115b','#27856a','#8d67ab','#1e3264','#f59b23','#0e6251'];
@@ -126,6 +127,61 @@ function formatViews(n) {
     if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M vues';
     if (n >= 1_000)     return (n / 1_000).toFixed(0) + 'K vues';
     return n + ' vues';
+}
+
+/* ═══════════════════════════════════════
+   NETTOYAGE TITRE / ARTISTE  (FIX 4)
+════════════════════════════════════════ */
+
+/**
+ * Décode les entités HTML puis supprime les suffixes
+ * parasites courants des titres YouTube.
+ */
+function cleanTitle(raw) {
+    // 1. Décoder les entités HTML (&amp; → &, &#39; → ', &quot; → ", etc.)
+    const txt = document.createElement('textarea');
+    txt.innerHTML = raw;
+    let s = txt.value;
+
+    // 2. Supprimer les blocs entre parenthèses / crochets contenant des mots-clés parasites
+    //    On répète 2× pour gérer les cas imbriqués ou consécutifs
+    const parasite = /\s*[\[(][^\]\[()]*?(?:official|audio|video|lyric|lyrics|clip\s*officiel|clip|mv|hd|4k|vevo|remaster(?:ed)?|radio\s*edit|extended|visualizer|explicit|clean|version|full\s*album|cover|karaoke|instrumental|slowed|reverb|sped\s*up|nightcore|bass\s*boosted|feat\.|ft\.)[^\]\[()]*[\])]/gi;
+    s = s.replace(parasite, '');
+    s = s.replace(parasite, '');
+
+    // 3. Supprimer les parenthèses / crochets vides restants
+    s = s.replace(/\s*[\[(]\s*[\])]/g, '');
+
+    // 4. Nettoyer espaces multiples et tirets / tirets longs en fin de chaîne
+    s = s.replace(/\s{2,}/g, ' ').replace(/[\s–—-]+$/, '').trim();
+
+    return s;
+}
+
+/**
+ * Décode les entités HTML puis nettoie les suffixes
+ * courants des noms de chaînes YouTube.
+ */
+function cleanArtist(raw) {
+    // 1. Décoder les entités HTML
+    const txt = document.createElement('textarea');
+    txt.innerHTML = raw;
+    let s = txt.value;
+
+    // 2. Supprimer les suffixes courants (ordre du plus spécifique au plus général)
+    s = s.replace(/VEVO$/i, '');
+    s = s.replace(/\s*-\s*Topic$/i, '');
+    s = s.replace(/\s*Official\s*(?:Channel|Music|Artist)?$/i, '');
+    s = s.replace(/\s*Music$/i, '');
+    s = s.replace(/\s*Records?$/i, '');
+    s = s.replace(/\s*Entertainment$/i, '');
+    s = s.replace(/\s*TV$/i, '');
+
+    // 3. Insérer un espace entre les mots collés en CamelCase (LadyGaga → Lady Gaga)
+    //    Ne touche pas les sigles tout-caps (BBC, VEVO…)
+    s = s.replace(/([a-zà-ÿ])([A-ZÀ-Ÿ])/g, '$1 $2');
+
+    return s.trim();
 }
 
 /* ─────────────────────────────────────
@@ -218,7 +274,7 @@ function startPlaylistListener() {
 
     unsubscribePlaylists = ref.onSnapshot(snapshot => {
         playlists       = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        playlistsLoaded = true;   // FIX 3 : Firestore est prêt
+        playlistsLoaded = true;
 
         renderLibrary();
 
@@ -230,7 +286,6 @@ function startPlaylistListener() {
             else showHome();
         }
 
-        // FIX 3 : si une ouverture était en attente, on l'exécute maintenant
         if (pendingPlaylistOpen) {
             const id = pendingPlaylistOpen;
             pendingPlaylistOpen = null;
@@ -291,9 +346,8 @@ function onYouTubeIframeAPIReady() {
         events: {
             onReady: () => {
                 setVolume(100);
-                playerReady = true;   // FIX 1 : player prêt
+                playerReady = true;
 
-                // FIX 1 : si un titre attendait d'être joué, on le lance maintenant
                 if (pendingTrack) {
                     const t      = pendingTrack;
                     pendingTrack = null;
@@ -380,7 +434,6 @@ async function searchMusic(append = false) {
     const q = document.getElementById('search-input').value.trim();
     if (!q) return;
 
-    // Nouveau terme → repart de zéro
     if (!append || q !== lastQuery) {
         nextPageToken = null;
         lastQuery     = q;
@@ -388,14 +441,13 @@ async function searchMusic(append = false) {
         document.getElementById('results-placeholder').style.display = 'none';
     }
 
-    // Cache uniquement pour la première page
     if (!append && searchCache.has(q)) {
         const [items, durMap] = searchCache.get(q);
         renderResults(items, durMap, false);
         return;
     }
 
-    showSkeletons(append ? 6 : 18);   // squelettes légers si "charger plus"
+    showSkeletons(append ? 6 : 18);
 
     let url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(q)}&type=video&videoCategoryId=10&maxResults=18&key=${YOUTUBE_API_KEY}`;
     if (append && nextPageToken) url += `&pageToken=${nextPageToken}`;
@@ -438,10 +490,8 @@ async function searchMusic(append = false) {
 function renderResults(items, durMap = {}, append = false) {
     const container = document.getElementById('results');
 
-    // Retire le bouton "Charger plus" précédent s'il existe
     document.getElementById('load-more-wrap')?.remove();
 
-    // Retire les squelettes si append
     if (append) {
         container.querySelectorAll('.skeleton-card').forEach(el => el.remove());
     } else {
@@ -450,10 +500,12 @@ function renderResults(items, durMap = {}, append = false) {
 
     items.forEach(item => {
         const info = durMap[item.id.videoId] || {};
+
+        // FIX 4 : nettoyage titre et artiste
         const t = {
             id:       item.id.videoId,
-            title:    item.snippet.title,
-            artist:   item.snippet.channelTitle,
+            title:    cleanTitle(item.snippet.title),
+            artist:   cleanArtist(item.snippet.channelTitle),
             img:      item.snippet.thumbnails.high?.url || item.snippet.thumbnails.medium.url,
             duration: info.duration || '--:--',
             views:    info.views    || ''
@@ -480,7 +532,6 @@ function renderResults(items, durMap = {}, append = false) {
             e.stopPropagation(); openTrackDropdown(e, t);
         });
 
-        // Clic sur l'artiste → recherche par artiste
         div.querySelector('.card-artist-link').addEventListener('click', e => {
             e.stopPropagation(); searchByArtist(t.artist);
         });
@@ -488,7 +539,6 @@ function renderResults(items, durMap = {}, append = false) {
         container.appendChild(div);
     });
 
-    // Bouton "Charger plus" si YouTube a d'autres pages
     if (nextPageToken) {
         const wrap = document.createElement('div');
         wrap.id = 'load-more-wrap';
@@ -519,7 +569,6 @@ function searchByArtist(artistName) {
    PLAYBACK
 ════════════════════════════════════════ */
 function playTrack(t) {
-    // FIX 1 : si le player n'est pas encore initialisé, on mémorise le titre
     if (!playerReady || !player || !player.loadVideoById) {
         pendingTrack = t;
         showToast('Chargement du lecteur…');
@@ -613,10 +662,7 @@ function prevTrack() {
 
 /* ═══════════════════════════════════════
    PLAYLIST PLAY BUTTON
-   FIX 2 : une seule définition propre
 ════════════════════════════════════════ */
-
-/** Retourne true si un titre de la playlist est en cours de lecture */
 function isPlaylistPlaying(id) {
     if (!currentTrack) return false;
     const pl = playlists.find(p => p.id === id);
@@ -624,7 +670,6 @@ function isPlaylistPlaying(id) {
     return isPlaying && pl.tracks.some(t => t.id === currentTrack.id);
 }
 
-/** Met à jour visuellement le bouton play/pause de la vue playlist ouverte */
 function updatePlaylistPlayBtn() {
     if (!currentSection.startsWith('playlist:')) return;
     const id  = currentSection.split(':')[1];
@@ -633,12 +678,6 @@ function updatePlaylistPlayBtn() {
     btn.innerHTML = isPlaylistPlaying(id) ? iconPause() : iconPlay();
 }
 
-/**
- * Gère le clic sur le bouton vert de la vue playlist :
- *  - joue  → pause
- *  - pause → reprend
- *  - pas dans cette playlist → lance depuis le début
- */
 function togglePlaylistPlay(id) {
     const pl = playlists.find(p => p.id === id);
     if (!pl || pl.tracks.length === 0) return;
@@ -1044,10 +1083,8 @@ function replaySearchFromHome(q) {
 
 /* ═══════════════════════════════════════
    PLAYLIST VIEW
-   FIX 3 : guard si Firestore pas encore chargé
 ════════════════════════════════════════ */
 function openPlaylistView(id) {
-    // FIX 3 : si les playlists ne sont pas encore chargées depuis Firestore
     if (!playlistsLoaded) {
         pendingPlaylistOpen = id;
         showToast('Chargement de la bibliothèque…');
