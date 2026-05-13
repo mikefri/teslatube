@@ -1571,3 +1571,12 @@ a      { text-decoration: none; color: inherit; }
         border-radius: 8px;
     }
 }
+
+.card-artist-link {
+    cursor: pointer;
+    transition: color var(--t) var(--ease), text-decoration var(--t) var(--ease);
+}
+.card-artist-link:hover {
+    color: var(--text-main);
+    text-decoration: underline;
+}
