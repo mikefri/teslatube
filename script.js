@@ -48,6 +48,8 @@ let shuffleMode              = false;
 let repeatMode               = false;
 const searchCache            = new Map();
 let searchTimeout            = null;
+let nextPageToken = null;   // pagination YouTube
+let lastQuery     = '';     // requête en cours
 
 // ── Palette ──
 const COLORS = ['#e91429','#503750','#0d73ec','#148a08','#e8115b','#27856a','#8d67ab','#1e3264','#f59b23','#0e6251'];
@@ -374,28 +376,41 @@ function onOverlayKey(e) {
 /* ═══════════════════════════════════════
    SEARCH
 ════════════════════════════════════════ */
-async function searchMusic() {
+async function searchMusic(append = false) {
     const q = document.getElementById('search-input').value.trim();
     if (!q) return;
-    document.getElementById('results-placeholder').style.display = 'none';
 
-    if (searchCache.has(q)) {
+    // Nouveau terme → repart de zéro
+    if (!append || q !== lastQuery) {
+        nextPageToken = null;
+        lastQuery     = q;
+        document.getElementById('results').innerHTML = '';
+        document.getElementById('results-placeholder').style.display = 'none';
+    }
+
+    // Cache uniquement pour la première page
+    if (!append && searchCache.has(q)) {
         const [items, durMap] = searchCache.get(q);
-        renderResults(items, durMap);
+        renderResults(items, durMap, false);
         return;
     }
 
-    showSkeletons(18);
+    showSkeletons(append ? 6 : 18);   // squelettes légers si "charger plus"
 
-    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(q)}&type=video&videoCategoryId=10&maxResults=18&key=${YOUTUBE_API_KEY}`;
+    let url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(q)}&type=video&videoCategoryId=10&maxResults=18&key=${YOUTUBE_API_KEY}`;
+    if (append && nextPageToken) url += `&pageToken=${nextPageToken}`;
+
     try {
-        const res  = await fetch(searchUrl);
+        const res  = await fetch(url);
         const data = await res.json();
         if (data.error) {
             document.getElementById('results').innerHTML =
                 `<div style="color:#b3b3b3;padding:24px 0;">Erreur : ${data.error.message}</div>`;
             return;
         }
+
+        nextPageToken = data.nextPageToken || null;
+
         const items      = data.items || [];
         const ids        = items.map(i => i.id.videoId).join(',');
         const detailsUrl = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails,statistics&id=${ids}&key=${YOUTUBE_API_KEY}`;
@@ -407,18 +422,31 @@ async function searchMusic() {
                 views:    formatViews(v.statistics?.viewCount)
             };
         });
-        searchCache.set(q, [items, durMap]);
-        addToSearchHistory(q);
-        renderResults(items, durMap);
+
+        if (!append) {
+            searchCache.set(q, [items, durMap]);
+            addToSearchHistory(q);
+        }
+
+        renderResults(items, durMap, append);
     } catch (e) {
         document.getElementById('results').innerHTML =
             '<div style="color:#b3b3b3;padding:24px 0;">Erreur réseau.</div>';
     }
 }
 
-function renderResults(items, durMap = {}) {
+function renderResults(items, durMap = {}, append = false) {
     const container = document.getElementById('results');
-    container.innerHTML = '';
+
+    // Retire le bouton "Charger plus" précédent s'il existe
+    document.getElementById('load-more-wrap')?.remove();
+
+    // Retire les squelettes si append
+    if (append) {
+        container.querySelectorAll('.skeleton-card').forEach(el => el.remove());
+    } else {
+        container.innerHTML = '';
+    }
 
     items.forEach(item => {
         const info = durMap[item.id.videoId] || {};
@@ -442,12 +470,49 @@ function renderResults(items, durMap = {}) {
                 <button class="card-options-btn" title="Plus d'options">•••</button>
             </div>
             <h4 title="${esc(t.title)}">${esc(t.title)}</h4>
-            <p>${esc(t.artist)}</p>`;
+            <p class="card-artist-link" title="Voir plus de ${esc(t.artist)}">${esc(t.artist)}</p>`;
+
         div.addEventListener('click', () => playTrack(t));
-        div.querySelector('.card-play-btn').addEventListener('click', e => { e.stopPropagation(); playTrack(t); });
-        div.querySelector('.card-options-btn').addEventListener('click', e => { e.stopPropagation(); openTrackDropdown(e, t); });
+        div.querySelector('.card-play-btn').addEventListener('click', e => {
+            e.stopPropagation(); playTrack(t);
+        });
+        div.querySelector('.card-options-btn').addEventListener('click', e => {
+            e.stopPropagation(); openTrackDropdown(e, t);
+        });
+
+        // Clic sur l'artiste → recherche par artiste
+        div.querySelector('.card-artist-link').addEventListener('click', e => {
+            e.stopPropagation(); searchByArtist(t.artist);
+        });
+
         container.appendChild(div);
     });
+
+    // Bouton "Charger plus" si YouTube a d'autres pages
+    if (nextPageToken) {
+        const wrap = document.createElement('div');
+        wrap.id = 'load-more-wrap';
+        wrap.style.cssText = 'grid-column:1/-1;display:flex;justify-content:center;padding:16px 0 8px;';
+        wrap.innerHTML = `<button onclick="searchMusic(true)" style="
+            background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.13);
+            color:#fff;border-radius:500px;padding:10px 32px;
+            font-size:.84rem;font-weight:700;font-family:inherit;cursor:pointer;
+            transition:background .15s;
+        " onmouseover="this.style.background='rgba(255,255,255,.13)'"
+           onmouseout="this.style.background='rgba(255,255,255,.07)'">
+            Charger plus
+        </button>`;
+        container.appendChild(wrap);
+    }
+}
+
+function searchByArtist(artistName) {
+    showSearch();
+    document.getElementById('search-input').value = artistName;
+    document.getElementById('search-clear').style.display = 'inline-flex';
+    document.getElementById('results-placeholder').style.display = 'none';
+    searchMusic();
+    showToast(`🎤 Résultats pour « ${artistName} »`);
 }
 
 /* ═══════════════════════════════════════
