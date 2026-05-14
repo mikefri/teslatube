@@ -1919,7 +1919,6 @@ function closeImportSpotifyModal() {
 }
 
 async function fetchSpotifyTracks(spotifyUrl) {
-    // Supprimer les paramètres de tracking et le préfixe intl-xx/
     let cleanUrl = spotifyUrl.split('?')[0].trim();
     cleanUrl = cleanUrl.replace(/\/intl-[a-z]+\//i, '/');
 
@@ -1927,21 +1926,44 @@ async function fetchSpotifyTracks(spotifyUrl) {
         throw new Error('URL non valide. Utilisez un lien Spotify album ou playlist publique.');
     }
 
+    // Plusieurs proxies CORS en fallback
+    const proxies = [
+        url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+        url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+        url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+    ];
 
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(cleanUrl)}`;
-    const response = await fetch(proxyUrl);
-    if (!response.ok) throw new Error('Impossible de contacter le proxy. Réessayez.');
+    let html = null;
 
-    const data = await response.json();
-    const html = data.contents;
+    for (const buildProxy of proxies) {
+        try {
+            const res = await fetch(buildProxy(cleanUrl));
+            if (!res.ok) continue;
+            const data = await res.json().catch(() => null);
+            // allorigins renvoie { contents: "..." }
+            // corsproxy et codetabs renvoient le texte directement
+            if (data && data.contents) {
+                html = data.contents;
+            } else if (typeof data === 'string') {
+                html = data;
+            } else {
+                // corsproxy.io renvoie du texte brut (pas du JSON)
+                const res2 = await fetch(buildProxy(cleanUrl));
+                html = await res2.text();
+            }
+            if (html && html.includes('spotify')) break;
+        } catch { continue; }
+    }
+
+    if (!html) throw new Error('Tous les proxies ont échoué. Réessayez dans quelques instants.');
 
     const jsonLdMatch = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
     if (!jsonLdMatch) throw new Error('Données introuvables. La playlist est peut-être privée.');
 
-    const jsonLd = JSON.parse(jsonLdMatch[1]);
-    const albumName    = jsonLd.name || 'Import Spotify';
-    const albumArtist  = jsonLd.byArtist?.name || jsonLd.creator?.name || '';
-    const tracks       = [];
+    const jsonLd     = JSON.parse(jsonLdMatch[1]);
+    const albumName  = jsonLd.name || 'Import Spotify';
+    const albumArtist = jsonLd.byArtist?.name || jsonLd.creator?.name || '';
+    const tracks     = [];
 
     if (Array.isArray(jsonLd.track)) {
         for (const t of jsonLd.track) {
