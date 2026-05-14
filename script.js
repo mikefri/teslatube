@@ -1899,3 +1899,203 @@ function switchAdTab(tab, btn) {
         if (el) el.style.display = t === tab ? 'block' : 'none';
     });
 }
+/* ═══════════════════════════════════════
+   MODAL IMPORT SPOTIFY
+════════════════════════════════════════ */
+function openImportSpotifyModal() {
+    const overlay = document.getElementById('spotify-import-overlay');
+    overlay.classList.add('open');
+    document.getElementById('spotify-url-input').value = '';
+    document.getElementById('spotify-import-status').innerHTML = '';
+    document.getElementById('spotify-import-btn').disabled = false;
+    setTimeout(() => document.getElementById('spotify-url-input').focus(), 80);
+}
+ 
+function closeImportSpotifyModal() {
+    document.getElementById('spotify-import-overlay').classList.remove('open');
+}
+ 
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeImportSpotifyModal();
+});
+ 
+/* ═══════════════════════════════════════
+   FETCH + PARSE SPOTIFY PAGE
+════════════════════════════════════════ */
+async function fetchSpotifyTracks(spotifyUrl) {
+    // Nettoyer l'URL (retirer les paramètres de tracking)
+    const cleanUrl = spotifyUrl.split('?')[0].trim();
+ 
+    // Valider le format
+    if (!/open\.spotify\.com\/(album|playlist)\/[A-Za-z0-9]+/.test(cleanUrl)) {
+        throw new Error('URL non valide. Utilisez un lien Spotify album ou playlist.');
+    }
+ 
+    // Proxy CORS public (allorigins)
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(cleanUrl)}`;
+ 
+    const response = await fetch(proxyUrl);
+    if (!response.ok) throw new Error('Impossible de récupérer la page Spotify.');
+ 
+    const data = await response.json();
+    const html = data.contents;
+ 
+    // ── Extraire le JSON-LD ──
+    const jsonLdMatch = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
+    if (!jsonLdMatch) throw new Error('Impossible de lire les données Spotify. La playlist est peut-être privée.');
+ 
+    let jsonLd;
+    try {
+        jsonLd = JSON.parse(jsonLdMatch[1]);
+    } catch {
+        throw new Error('Erreur de lecture des données Spotify.');
+    }
+ 
+    // ── Extraire les pistes selon le type ──
+    const tracks = [];
+    const albumName = jsonLd.name || 'Importé depuis Spotify';
+    const albumArtist = jsonLd.byArtist?.name || jsonLd.creator?.name || '';
+ 
+    // Format album
+    if (jsonLd['@type'] === 'MusicAlbum' && Array.isArray(jsonLd.track)) {
+        for (const t of jsonLd.track) {
+            const name = t.name || (t['@type'] === 'MusicRecording' && t.name);
+            if (name) {
+                const artist = t.byArtist?.name || albumArtist || '';
+                tracks.push({ title: name, artist });
+            }
+        }
+    }
+ 
+    // Format playlist (MusicPlaylist)
+    else if (jsonLd['@type'] === 'MusicPlaylist' && Array.isArray(jsonLd.track)) {
+        for (const t of jsonLd.track) {
+            const name = t.name;
+            if (name) {
+                const artist = t.byArtist?.name || '';
+                tracks.push({ title: name, artist });
+            }
+        }
+    }
+ 
+    // Fallback : chercher les titres dans les liens /track/
+    else {
+        const trackRe = /<a[^>]+href="https:\/\/open\.spotify\.com\/track\/[^"]+"[^>]*>([^<]{2,80})<\/a>/g;
+        let m;
+        const seen = new Set();
+        while ((m = trackRe.exec(html)) !== null) {
+            const name = m[1].trim();
+            if (!seen.has(name) && name.length > 1) {
+                seen.add(name);
+                tracks.push({ title: name, artist: albumArtist });
+            }
+        }
+    }
+ 
+    if (tracks.length === 0) throw new Error('Aucun titre trouvé. La playlist est peut-être privée ou vide.');
+ 
+    return { albumName, albumArtist, tracks };
+}
+ 
+/* ═══════════════════════════════════════
+   RECHERCHE YOUTUBE POUR UN TITRE
+════════════════════════════════════════ */
+async function searchYouTubeForTrack(title, artist) {
+    const q = artist ? `${title} ${artist}` : title;
+    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(q)}&type=video&videoCategoryId=10&maxResults=1&key=${YOUTUBE_API_KEY}`;
+ 
+    const res  = await fetch(url);
+    const data = await res.json();
+    if (!data.items || data.items.length === 0) return null;
+ 
+    const item = data.items[0];
+    const vid  = item.id.videoId;
+ 
+    // Récupérer la durée
+    let duration = '--:--';
+    try {
+        const dUrl = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${vid}&key=${YOUTUBE_API_KEY}`;
+        const dRes = await fetch(dUrl);
+        const dData = await dRes.json();
+        if (dData.items && dData.items[0]) {
+            duration = parseISO8601Duration(dData.items[0].contentDetails.duration);
+        }
+    } catch { /* on garde '--:--' */ }
+ 
+    return {
+        id:       vid,
+        title:    cleanTitle(item.snippet.title),
+        artist:   cleanArtist(item.snippet.channelTitle),
+        img:      item.snippet.thumbnails.high?.url || item.snippet.thumbnails.medium?.url || '',
+        duration
+    };
+}
+ 
+/* ═══════════════════════════════════════
+   IMPORT PRINCIPAL
+════════════════════════════════════════ */
+async function importFromSpotify() {
+    const url    = document.getElementById('spotify-url-input').value.trim();
+    const status = document.getElementById('spotify-import-status');
+    const btn    = document.getElementById('spotify-import-btn');
+ 
+    if (!url) { status.innerHTML = `<span style="color:#ff6b6b">Collez d'abord un lien Spotify.</span>`; return; }
+ 
+    btn.disabled = true;
+ 
+    // ── Étape 1 : récupérer les titres Spotify ──
+    status.innerHTML = `<div class="spi-step active">🔍 Lecture de la page Spotify…</div>`;
+ 
+    let albumData;
+    try {
+        albumData = await fetchSpotifyTracks(url);
+    } catch (err) {
+        status.innerHTML = `<span style="color:#ff6b6b">❌ ${err.message}</span>`;
+        btn.disabled = false;
+        return;
+    }
+ 
+    const { albumName, tracks } = albumData;
+    status.innerHTML = `<div class="spi-step done">✅ ${tracks.length} titres trouvés dans « ${esc(albumName)} »</div>
+        <div class="spi-step active">🎵 Recherche sur YouTube… <span id="spi-counter">0/${tracks.length}</span></div>
+        <div class="spi-progress-wrap"><div class="spi-progress-bar" id="spi-bar" style="width:0%"></div></div>`;
+ 
+    // ── Étape 2 : créer la playlist ──
+    const playlistId = await createPlaylist(albumName);
+ 
+    // ── Étape 3 : chercher chaque titre sur YouTube ──
+    let found = 0;
+    const counterEl = () => document.getElementById('spi-counter');
+    const barEl     = () => document.getElementById('spi-bar');
+ 
+    // Traiter par lots de 3 pour ne pas épuiser le quota
+    const BATCH = 3;
+    for (let i = 0; i < tracks.length; i += BATCH) {
+        const batch = tracks.slice(i, i + BATCH);
+        const results = await Promise.all(
+            batch.map(t => searchYouTubeForTrack(t.title, t.artist))
+        );
+        for (const track of results) {
+            if (track) {
+                await addTrackToPlaylist(playlistId, track);
+                found++;
+            }
+            const done = i + results.indexOf(track) + 1;
+            if (counterEl()) counterEl().textContent = `${Math.min(done, tracks.length)}/${tracks.length}`;
+            if (barEl()) barEl().style.width = `${(Math.min(done, tracks.length) / tracks.length) * 100}%`;
+        }
+        // Pause entre les lots pour respecter le quota YouTube
+        if (i + BATCH < tracks.length) await new Promise(r => setTimeout(r, 400));
+    }
+ 
+    // ── Étape 4 : terminé ──
+    const skipped = tracks.length - found;
+    status.innerHTML = `
+        <div class="spi-step done">✅ ${tracks.length} titres Spotify lus</div>
+        <div class="spi-step done">✅ ${found} pistes ajoutées à « ${esc(albumName)} »${skipped > 0 ? ` (${skipped} introuvables)` : ''}</div>
+        <div class="spi-done-actions">
+            <button onclick="closeImportSpotifyModal(); openPlaylistView('${playlistId}')" class="spi-open-btn">Ouvrir la playlist →</button>
+        </div>`;
+    btn.disabled = false;
+}
+ 
