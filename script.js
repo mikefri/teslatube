@@ -1919,217 +1919,85 @@ function closeImportSpotifyModal() {
 }
 
 async function fetchSpotifyTracks(spotifyUrl) {
- 
-    /* ── Nettoyage URL ── */
     let cleanUrl = spotifyUrl.split('?')[0].trim();
     cleanUrl = cleanUrl.replace(/\/intl-[a-z]+\//i, '/');
- 
     if (!/open\.spotify\.com\/(album|playlist)\/[A-Za-z0-9]+/.test(cleanUrl)) {
         throw new Error('URL non valide. Utilisez un lien Spotify album ou playlist publique.');
     }
- 
-    /* ── Proxies CORS en cascade ── */
+
+    /* ── Étape 1 : récupérer albumName + artist depuis les meta Spotify ── */
     const proxies = [
         url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
         url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
-        url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
     ];
- 
     let html = null;
- 
-    for (const buildProxy of proxies) {
+    for (const build of proxies) {
         try {
-            const res = await fetch(buildProxy(cleanUrl));
+            const res  = await fetch(build(cleanUrl));
             if (!res.ok) continue;
             const text = await res.text();
-            // allorigins encapsule dans { contents: "..." }
-            try {
-                const json = JSON.parse(text);
-                if (json.contents) { html = json.contents; }
-                else               { html = text; }
-            } catch {
-                html = text;
-            }
+            try { const j = JSON.parse(text); html = j.contents || text; }
+            catch { html = text; }
             if (html && html.length > 500) break;
         } catch { continue; }
     }
- 
-    if (!html) throw new Error('Tous les proxies ont échoué. Réessayez dans un instant.');
-    console.log('[Spotify] HTML reçu :', html.length, 'caractères');
- 
-    /* ══════════════════════════════════════════════
-       STRATÉGIE 1 — JSON-LD
-       Spotify intègre un <script type="application/ld+json">
-    ══════════════════════════════════════════════ */
-    const tracks    = [];
-    let   albumName = 'Import Spotify';
-    let   albumArtist = '';
- 
-    const allJsonLd = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)];
-    for (const match of allJsonLd) {
-        try {
-            const ld = JSON.parse(match[1]);
-            console.log('[Spotify] JSON-LD type:', ld['@type'], '| tracks:', ld.track?.length);
- 
-            if (ld.name) albumName = ld.name;
-            if (ld.byArtist?.name) albumArtist = ld.byArtist.name;
-            if (ld.creator?.name)  albumArtist = ld.creator.name;
- 
-            if (Array.isArray(ld.track) && ld.track.length > 0) {
-                for (const t of ld.track) {
-                    if (t.name) {
-                        tracks.push({
-                            title:  t.name,
-                            artist: t.byArtist?.name || albumArtist
-                        });
-                    }
-                }
-                if (tracks.length > 0) {
-                    console.log('[Spotify] Stratégie 1 OK :', tracks.length, 'titres');
-                    return { albumName, tracks };
-                }
-            }
-        } catch (e) { console.warn('[Spotify] JSON-LD parse error:', e); }
-    }
- 
-    /* ══════════════════════════════════════════════
-       STRATÉGIE 2 — __NEXT_DATA__
-       Next.js intègre toutes les données de la page
-    ══════════════════════════════════════════════ */
-    const nextMatch = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/);
-    if (nextMatch) {
-        try {
-            const nextData = JSON.parse(nextMatch[1]);
-            console.log('[Spotify] __NEXT_DATA__ trouvé');
- 
-            // Chercher récursivement un tableau de pistes dans l'objet Next.js
-            function findTracks(obj, depth = 0) {
-                if (!obj || typeof obj !== 'object' || depth > 12) return null;
-                // Tableau d'items avec name + artists (format Spotify Web API)
-                if (Array.isArray(obj)) {
-                    if (obj.length > 0 && obj[0]?.name && (obj[0]?.artists || obj[0]?.byArtist)) {
-                        return obj;
-                    }
-                    for (const item of obj.slice(0, 5)) {
-                        const r = findTracks(item, depth + 1);
-                        if (r) return r;
-                    }
-                } else {
-                    for (const key of ['tracks', 'items', 'track', 'data', 'album', 'playlist']) {
-                        if (obj[key]) {
-                            const r = findTracks(obj[key], depth + 1);
-                            if (r) return r;
-                        }
-                    }
-                }
-                return null;
-            }
- 
-            const found = findTracks(nextData);
-            if (found && found.length > 0) {
-                const seen = new Set();
-                for (const item of found) {
-                    const trackObj = item.track || item;
-                    const name     = trackObj.name;
-                    if (!name || seen.has(name)) continue;
-                    seen.add(name);
-                    const artist = trackObj.artists?.[0]?.name
-                               || trackObj.byArtist?.name
-                               || albumArtist || '';
-                    tracks.push({ title: name, artist });
-                }
-                if (tracks.length > 0) {
-                    // Essayer de récupérer le nom de l'album depuis Next.js
-                    const nameMatch = html.match(/"name"\s*:\s*"([^"]{2,80})"[\s\S]{0,200}"@type"\s*:\s*"Music/);
-                    if (nameMatch) albumName = nameMatch[1];
-                    console.log('[Spotify] Stratégie 2 OK :', tracks.length, 'titres');
-                    return { albumName, tracks };
-                }
-            }
-        } catch (e) { console.warn('[Spotify] __NEXT_DATA__ parse error:', e); }
-    }
- 
-    /* ══════════════════════════════════════════════
-       STRATÉGIE 3 — Meta music:song + noms dans <a>
-    ══════════════════════════════════════════════ */
-    console.log('[Spotify] Tentative stratégie 3 (meta tags)');
+    if (!html) throw new Error('Impossible de lire la page Spotify.');
 
-    // 1. Extraire les IDs de pistes depuis <meta name="music:song" content="…/track/ID">
-    const metaTrackRe = /<meta[^>]+name="music:song"[^>]+content="[^"]*\/track\/([A-Za-z0-9]+)"[^>]*>/g;
-    const trackIds = [];
-    let metaM;
-    while ((metaM = metaTrackRe.exec(html)) !== null) {
-        if (!trackIds.includes(metaM[1])) trackIds.push(metaM[1]);
-    }
-    console.log('[Spotify] IDs trouvés dans meta:', trackIds.length, trackIds);
+    // og:title → "Use Your Illusion I"
+    let albumName   = 'Import Spotify';
+    let albumArtist = '';
+    const ogT = html.match(/content="([^"]+)"\s+(?:property|name)="og:title"|(?:property|name)="og:title"\s+content="([^"]+)"/);
+    if (ogT) albumName = (ogT[1] || ogT[2]).replace(/\s*[|\-–].*$/, '').trim();
 
-    // 2. Pour chaque ID, chercher le nom dans les balises <a href="…/track/ID">
-    //    (avec ou sans intl-xx/, avec ou sans domaine complet)
-    for (const id of trackIds) {
-        // Regex large : capture tout texte/HTML après le href du track
-        const linkRe = new RegExp(
-            `href="[^"]*\\/track\\/${id}"[^>]*>([\\s\\S]{0,400}?)(?:<\\/a>|aria-)`,
-            'i'
+    // og:description → "Guns N' Roses · album · 1991 · 16 songs"
+    const ogD = html.match(/content="([^"]+)"\s+(?:property|name)="og:description"|(?:property|name)="og:description"\s+content="([^"]+)"/);
+    if (ogD) {
+        const m = (ogD[1] || ogD[2]).match(/^([^·•|]+)/);
+        if (m) albumArtist = m[1].trim();
+    }
+    console.log('[Spotify] Album:', albumName, '| Artiste:', albumArtist);
+
+    /* ── Étape 2 : chercher les pistes via iTunes Search API ── */
+    const q   = encodeURIComponent(`${albumName} ${albumArtist}`.trim());
+    const url = `https://itunes.apple.com/search?term=${q}&media=music&entity=song&limit=50`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('iTunes API inaccessible. Réessayez.');
+    const data = await res.json();
+    console.log('[iTunes] Résultats bruts:', data.resultCount);
+
+    // Filtrer les pistes qui correspondent à notre album
+    const albNorm = albumName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    let matching  = data.results.filter(r => {
+        const c = (r.collectionName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        return c.includes(albNorm) || albNorm.includes(c);
+    });
+
+    // Fallback : premier mot de l'album
+    if (matching.length === 0) {
+        const firstWord = albumName.toLowerCase().split(' ')[0];
+        matching = data.results.filter(r =>
+            (r.collectionName || '').toLowerCase().includes(firstWord)
         );
-        const linkMatch = html.match(linkRe);
-
-        let name = null;
-
-        if (linkMatch) {
-            // Supprimer les balises HTML internes → texte brut
-            name = linkMatch[1]
-                .replace(/<[^>]+>/g, ' ')
-                .replace(/&amp;/g, '&').replace(/&#39;/g, "'")
-                .replace(/&quot;/g, '"').replace(/&nbsp;/g, ' ')
-                .replace(/\s+/g, ' ').trim();
-            // Garder seulement la première ligne significative
-            name = name.split('\n')[0].trim();
-            if (name.length < 2 || name.length > 120) name = null;
-        }
-
-        // Fallback : chercher aria-label="Play NomDuTitre by Artiste"
-        if (!name) {
-            const ariaRe = new RegExp(
-                `aria-label="(?:Play|Lire|Jouer)\\s+([^"]{2,80}?)\\s+(?:by|par)\\s`,
-                'i'
-            );
-            // Chercher dans les 1000 chars autour de l'ID
-            const idPos = html.indexOf(id);
-            if (idPos > 0) {
-                const zone = html.slice(Math.max(0, idPos - 200), idPos + 800);
-                const am   = zone.match(ariaRe);
-                if (am) name = am[1].trim();
-            }
-        }
-
-        if (name) {
-            tracks.push({ title: name, artist: albumArtist });
-            console.log(`[Spotify] Track trouvé: "${name}"`);
-        } else {
-            console.warn(`[Spotify] Nom introuvable pour ID: ${id}`);
-        }
     }
 
-    // Récupérer albumName depuis og:title
-    const ogT = html.match(/(?:property|name)="og:title"\s+content="([^"]+)"|content="([^"]+)"\s+(?:property|name)="og:title"/);
-    if (ogT) albumName = (ogT[1] || ogT[2]).replace(/\s*[|-].*$/, '').trim();
-
-    if (tracks.length > 0) {
-        console.log('[Spotify] Stratégie 3 OK :', tracks.length, 'titres');
-        return { albumName, tracks };
+    if (matching.length === 0) {
+        throw new Error(`Album "${albumName}" introuvable sur iTunes. Vérifiez le nom ou utilisez la recherche TeslaTube.`);
     }
 
-    // Debug : montrer ce qu'il y a autour du 1er ID trouvé
-    if (trackIds.length > 0) {
-        const pos = html.indexOf(trackIds[0]);
-        console.log('[Spotify] Zone HTML autour du 1er ID:',
-            html.slice(Math.max(0, pos - 50), pos + 600));
+    // Trier par numéro de piste, dédupliquer
+    matching.sort((a, b) => (a.trackNumber || 0) - (b.trackNumber || 0));
+    const seen   = new Set();
+    const tracks = [];
+    for (const r of matching) {
+        const key = (r.trackName || '').toLowerCase();
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        tracks.push({ title: r.trackName, artist: r.artistName || albumArtist });
     }
 
-    throw new Error(`IDs trouvés (${trackIds.length}) mais noms introuvables. Voir console.`);
- 
-    /* ── Aucune stratégie n'a fonctionné ── */
-    throw new Error('Aucun titre trouvé. L\'album/playlist est peut-être privé(e), ou Spotify a changé son format de page.');
+    if (tracks.length === 0) throw new Error('Aucune piste extraite depuis iTunes.');
+    console.log('[iTunes] Pistes finales:', tracks.map(t => t.title));
+    return { albumName, tracks };
 }
 
 async function searchYouTubeForTrack(title, artist) {
