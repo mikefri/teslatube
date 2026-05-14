@@ -2049,46 +2049,84 @@ async function fetchSpotifyTracks(spotifyUrl) {
         } catch (e) { console.warn('[Spotify] __NEXT_DATA__ parse error:', e); }
     }
  
-    /* ══════════════════════════════════════════════
-       STRATÉGIE 3 — Regex sur les liens /track/
-       Cherche tous les <a href="…/track/ID">Titre</a>
+/* ══════════════════════════════════════════════
+       STRATÉGIE 3 — Contexte autour des liens /track/
     ══════════════════════════════════════════════ */
-    console.log('[Spotify] Tentative stratégie 3 (regex liens)');
- 
-    // Extraire le nom de l'album depuis la balise <title>
-    const titleMatch = html.match(/<title>([^<]+)<\/title>/);
-    if (titleMatch) {
-        const t = titleMatch[1].replace(/\s*[|-].*$/, '').trim();
-        if (t) albumName = t;
+    console.log('[Spotify] Tentative stratégie 3 (contexte liens)');
+
+    // Extraire albumName depuis og:title ou <title>
+    const ogTitle2 = html.match(/content="([^"]+)"\s+property="og:title"|property="og:title"\s+content="([^"]+)"/);
+    if (ogTitle2) albumName = (ogTitle2[1] || ogTitle2[2]).split('|')[0].replace(/\s*-\s*Album.*$/i,'').trim();
+    const ogArtist = html.match(/content="([^"·]+)[\s·]/);
+    if (ogArtist && !albumArtist) albumArtist = ogArtist[1].trim();
+
+    // Pour chaque lien /track/ID, extraire 600 chars après lui et chercher le titre
+    const trackUrlRe = /href="(?:https:\/\/open\.spotify\.com)?\/track\/([A-Za-z0-9]+)"/g;
+    const seenIds    = new Set();
+    const seenNames  = new Set();
+    let   m;
+
+    while ((m = trackUrlRe.exec(html)) !== null) {
+        const trackId = m[1];
+        if (seenIds.has(trackId)) continue;
+        seenIds.add(trackId);
+
+        // Fenêtre de 700 chars après le href
+        const window = html.slice(m.index, m.index + 700);
+
+        // Supprimer toutes les balises HTML → texte brut
+        const text = window
+            .replace(/<script[\s\S]*?<\/script>/gi, '')
+            .replace(/<style[\s\S]*?<\/style>/gi, '')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&nbsp;/g, ' ')
+            .replace(/\s+/g, ' ').trim();
+
+        // Stratégie A : aria-label="Lire NomDuTitre par Artiste"
+        const ariaMatch = window.match(/aria-label="(?:Lire|Play|Jouer)\s+([^"]{2,80}?)\s+(?:par|by)\s+/i);
+        if (ariaMatch) {
+            const name = ariaMatch[1].trim();
+            if (!seenNames.has(name)) { seenNames.add(name); tracks.push({ title: name, artist: albumArtist }); continue; }
+        }
+
+        // Stratégie B : data-testid="track-name" ou class contenant "track-name"
+        const testIdMatch = window.match(/(?:data-testid="track-name"|class="[^"]*track[^"]*name[^"]*")[^>]*>([^<]{2,100})</i);
+        if (testIdMatch) {
+            const name = testIdMatch[1].trim();
+            if (!seenNames.has(name)) { seenNames.add(name); tracks.push({ title: name, artist: albumArtist }); continue; }
+        }
+
+        // Stratégie C : premier "mot" long dans le texte brut (heuristique)
+        // On ignore les tokens courts (<3 chars) et les URLs
+        const tokens = text.split(' ').filter(t => t.length > 2 && !t.startsWith('http') && !/^[0-9:]+$/.test(t));
+        if (tokens.length > 0) {
+            // Reconstituer des groupes de mots jusqu'à 6 mots max
+            for (let len = 5; len >= 1; len--) {
+                const candidate = tokens.slice(0, len).join(' ');
+                if (candidate.length >= 3 && candidate.length <= 80 && !seenNames.has(candidate)) {
+                    // Vérifier que ça ressemble à un titre (pas juste "E" ou un UUID)
+                    if (!/^[A-Za-z0-9]{20,}$/.test(candidate)) {
+                        seenNames.add(candidate);
+                        tracks.push({ title: candidate, artist: albumArtist });
+                        break;
+                    }
+                }
+            }
+        }
     }
-    // Ou depuis og:title
-    const ogTitle = html.match(/property="og:title"\s+content="([^"]+)"/);
-    if (ogTitle) albumName = ogTitle[1].split('|')[0].replace(/\s*-\s*Album.*$/i, '').trim();
- 
-    // Extraire l'artiste depuis og:description
-    const ogDesc = html.match(/property="og:description"\s+content="([^"]+)"/);
-    if (ogDesc) {
-        const m = ogDesc[1].match(/^([^·•]+)/);
-        if (m) albumArtist = m[1].trim();
+
+    // Log de debug : montrer un extrait du HTML autour du 1er lien track
+    const firstTrack = html.indexOf('/track/');
+    if (firstTrack > 0) {
+        console.log('[Spotify] Extrait HTML (1er track):', html.slice(firstTrack - 20, firstTrack + 500));
     }
- 
-    // Trouver tous les liens vers des pistes
-    const seen = new Set();
-    // Pattern 1 : href="/track/ID">TitreDeLaChanson<
-    const p1 = html.matchAll(/href="(?:https:\/\/open\.spotify\.com)?\/track\/[A-Za-z0-9]+"[^>]*>\s*([^<\n]{2,100})\s*</g);
-    for (const m of p1) {
-        const name = m[1].trim().replace(/&#39;/g, "'").replace(/&amp;/g, '&').replace(/&quot;/g, '"');
-        if (name.length < 2 || seen.has(name)) continue;
-        // Filtrer les faux positifs (noms d'artiste, labels…)
-        if (/^(Guns N|Spotify|Premium|Playlist|Album|Single|EP|Follow|Share|Save|Play|Add|More|Explicit)/i.test(name)) continue;
-        seen.add(name);
-        tracks.push({ title: name, artist: albumArtist });
-    }
- 
+
     if (tracks.length > 0) {
         console.log('[Spotify] Stratégie 3 OK :', tracks.length, 'titres');
         return { albumName, tracks };
     }
+
+    throw new Error('Aucun titre trouvé. Regardez la console (F12) pour l\'extrait HTML.');
  
     /* ── Aucune stratégie n'a fonctionné ── */
     throw new Error('Aucun titre trouvé. L\'album/playlist est peut-être privé(e), ou Spotify a changé son format de page.');
