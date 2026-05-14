@@ -1919,10 +1919,14 @@ function closeImportSpotifyModal() {
 }
 
 async function fetchSpotifyTracks(spotifyUrl) {
-    const cleanUrl = spotifyUrl.split('?')[0].trim();
+    // Supprimer les paramètres de tracking et le préfixe intl-xx/
+    let cleanUrl = spotifyUrl.split('?')[0].trim();
+    cleanUrl = cleanUrl.replace(/\/intl-[a-z]+\//i, '/');
+
     if (!/open\.spotify\.com\/(album|playlist)\/[A-Za-z0-9]+/.test(cleanUrl)) {
         throw new Error('URL non valide. Utilisez un lien Spotify album ou playlist publique.');
     }
+
 
     const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(cleanUrl)}`;
     const response = await fetch(proxyUrl);
