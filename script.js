@@ -2050,122 +2050,80 @@ async function fetchSpotifyTracks(spotifyUrl) {
     }
  
     /* ══════════════════════════════════════════════
-       STRATÉGIE 3 — Regex sur les liens /track/
-       Cherche tous les <a href="…/track/ID">Titre</a>
+       STRATÉGIE 3 — Contexte autour des liens /track/
     ══════════════════════════════════════════════ */
-    console.log('[Spotify] Tentative stratégie 3 (regex liens)');
- 
-    // Extraire le nom de l'album depuis la balise <title>
-    const titleMatch = html.match(/<title>([^<]+)<\/title>/);
-    if (titleMatch) {
-        const t = titleMatch[1].replace(/\s*[|-].*$/, '').trim();
-        if (t) albumName = t;
+    console.log('[Spotify] Tentative stratégie 3 (contexte liens)');
+
+    // Extraire albumName depuis og:title ou <title>
+    const ogTitle2 = html.match(/content="([^"]+)"\s+property="og:title"|property="og:title"\s+content="([^"]+)"/);
+    if (ogTitle2) albumName = (ogTitle2[1] || ogTitle2[2]).split('|')[0].replace(/\s*-\s*Album.*$/i,'').trim();
+    const ogArtist = html.match(/content="([^"·]+)[\s·]/);
+    if (ogArtist && !albumArtist) albumArtist = ogArtist[1].trim();
+
+    // Pour chaque lien /track/ID, extraire 600 chars après lui et chercher le titre
+    const trackUrlRe = /href="(?:https:\/\/open\.spotify\.com)?\/track\/([A-Za-z0-9]+)"/g;
+    const seenIds    = new Set();
+    const seenNames  = new Set();
+    let   m;
+
+    while ((m = trackUrlRe.exec(html)) !== null) {
+        const trackId = m[1];
+        if (seenIds.has(trackId)) continue;
+        seenIds.add(trackId);
+
+        // Fenêtre de 700 chars après le href
+        const window = html.slice(m.index, m.index + 700);
+
+        // Supprimer toutes les balises HTML → texte brut
+        const text = window
+            .replace(/<script[\s\S]*?<\/script>/gi, '')
+            .replace(/<style[\s\S]*?<\/style>/gi, '')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&nbsp;/g, ' ')
+            .replace(/\s+/g, ' ').trim();
+
+        // Stratégie A : aria-label="Lire NomDuTitre par Artiste"
+        const ariaMatch = window.match(/aria-label="(?:Lire|Play|Jouer)\s+([^"]{2,80}?)\s+(?:par|by)\s+/i);
+        if (ariaMatch) {
+            const name = ariaMatch[1].trim();
+            if (!seenNames.has(name)) { seenNames.add(name); tracks.push({ title: name, artist: albumArtist }); continue; }
+        }
+
+        // Stratégie B : data-testid="track-name" ou class contenant "track-name"
+        const testIdMatch = window.match(/(?:data-testid="track-name"|class="[^"]*track[^"]*name[^"]*")[^>]*>([^<]{2,100})</i);
+        if (testIdMatch) {
+            const name = testIdMatch[1].trim();
+            if (!seenNames.has(name)) { seenNames.add(name); tracks.push({ title: name, artist: albumArtist }); continue; }
+        }
+
+        // Stratégie C : premier "mot" long dans le texte brut (heuristique)
+        // On ignore les tokens courts (<3 chars) et les URLs
+        const tokens = text.split(' ').filter(t => t.length > 2 && !t.startsWith('http') && !/^[0-9:]+$/.test(t));
+        if (tokens.length > 0) {
+            // Reconstituer des groupes de mots jusqu'à 6 mots max
+            for (let len = 5; len >= 1; len--) {
+                const candidate = tokens.slice(0, len).join(' ');
+                if (candidate.length >= 3 && candidate.length <= 80 && !seenNames.has(candidate)) {
+                    // Vérifier que ça ressemble à un titre (pas juste "E" ou un UUID)
+                    if (!/^[A-Za-z0-9]{20,}$/.test(candidate)) {
+                        seenNames.add(candidate);
+                        tracks.push({ title: candidate, artist: albumArtist });
+                        break;
+                    }
+                }
+            }
+        }
     }
-    // Ou depuis og:title
-    const ogTitle = html.match(/property="og:title"\s+content="([^"]+)"/);
-    if (ogTitle) albumName = ogTitle[1].split('|')[0].replace(/\s*-\s*Album.*$/i, '').trim();
- 
-    // Extraire l'artiste depuis og:description
-    const ogDesc = html.match(/property="og:description"\s+content="([^"]+)"/);
-    if (ogDesc) {
-        const m = ogDesc[1].match(/^([^·•]+)/);
-        if (m) albumArtist = m[1].trim();
+
+    // Log de debug : montrer un extrait du HTML autour du 1er lien track
+    const firstTrack = html.indexOf('/track/');
+    if (firstTrack > 0) {
+        console.log('[Spotify] Extrait HTML (1er track):', html.slice(firstTrack - 20, firstTrack + 500));
     }
- 
-    // Trouver tous les liens vers des pistes
-    const seen = new Set();
-    // Pattern 1 : href="/track/ID">TitreDeLaChanson<
-    const p1 = html.matchAll(/href="(?:https:\/\/open\.spotify\.com)?\/track\/[A-Za-z0-9]+"[^>]*>\s*([^<\n]{2,100})\s*</g);
-    for (const m of p1) {
-        const name = m[1].trim().replace(/&#39;/g, "'").replace(/&amp;/g, '&').replace(/&quot;/g, '"');
-        if (name.length < 2 || seen.has(name)) continue;
-        // Filtrer les faux positifs (noms d'artiste, labels…)
-        if (/^(Guns N|Spotify|Premium|Playlist|Album|Single|EP|Follow|Share|Save|Play|Add|More|Explicit)/i.test(name)) continue;
-        seen.add(name);
-        tracks.push({ title: name, artist: albumArtist });
-    }
- 
+
     if (tracks.length > 0) {
         console.log('[Spotify] Stratégie 3 OK :', tracks.length, 'titres');
         return { albumName, tracks };
     }
- 
-    /* ── Aucune stratégie n'a fonctionné ── */
-    throw new Error('Aucun titre trouvé. L\'album/playlist est peut-être privé(e), ou Spotify a changé son format de page.');
-}
 
-async function searchYouTubeForTrack(title, artist) {
-    const q   = artist ? `${title} ${artist}` : title;
-    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(q)}&type=video&videoCategoryId=10&maxResults=1&key=${YOUTUBE_API_KEY}`;
-    const res = await fetch(url);
-    const data = await res.json();
-    if (!data.items || !data.items.length) return null;
-    const item = data.items[0];
-    const vid  = item.id.videoId;
-    let duration = '--:--';
-    try {
-        const d = await (await fetch(`https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${vid}&key=${YOUTUBE_API_KEY}`)).json();
-        if (d.items?.[0]) duration = parseISO8601Duration(d.items[0].contentDetails.duration);
-    } catch {}
-    return {
-        id:       vid,
-        title:    cleanTitle(item.snippet.title),
-        artist:   cleanArtist(item.snippet.channelTitle),
-        img:      item.snippet.thumbnails.high?.url || item.snippet.thumbnails.medium?.url || '',
-        duration
-    };
-}
-
-async function importFromSpotify() {
-    const url    = document.getElementById('spotify-url-input').value.trim();
-    const status = document.getElementById('spotify-import-status');
-    const btn    = document.getElementById('spotify-import-btn');
-    if (!url) { status.innerHTML = '<span style="color:#ff6b6b">Collez d\'abord un lien Spotify.</span>'; return; }
-
-    btn.disabled = true;
-    status.innerHTML = '<span style="color:#b3b3b3">🔍 Lecture de la page Spotify…</span>';
-
-    let albumData;
-    try {
-        albumData = await fetchSpotifyTracks(url);
-    } catch (err) {
-        status.innerHTML = `<span style="color:#ff6b6b">❌ ${err.message}</span>`;
-        btn.disabled = false;
-        return;
-    }
-
-    const { albumName, tracks } = albumData;
-    status.innerHTML = `
-        <div style="color:#1db954">✅ ${tracks.length} titres trouvés dans « ${esc(albumName)} »</div>
-        <div style="color:#fff;margin-top:4px">🎵 Recherche YouTube… <span id="spi-counter">0/${tracks.length}</span></div>
-        <div style="background:rgba(255,255,255,.08);border-radius:500px;height:4px;margin:10px 0;">
-            <div id="spi-bar" style="height:100%;background:#1db954;border-radius:500px;width:0%;transition:width .3s"></div>
-        </div>`;
-
-    const playlistId = await createPlaylist(albumName);
-    let found = 0;
-
-    for (let i = 0; i < tracks.length; i++) {
-        const track = await searchYouTubeForTrack(tracks[i].title, tracks[i].artist);
-        if (track) { await addTrackToPlaylist(playlistId, track); found++; }
-        const pct = Math.round(((i + 1) / tracks.length) * 100);
-        const counterEl = document.getElementById('spi-counter');
-        const barEl     = document.getElementById('spi-bar');
-        if (counterEl) counterEl.textContent = `${i + 1}/${tracks.length}`;
-        if (barEl)     barEl.style.width     = pct + '%';
-        if (i < tracks.length - 1) await new Promise(r => setTimeout(r, 300));
-    }
-
-    const skipped = tracks.length - found;
-    status.innerHTML = `
-        <div style="color:#1db954">✅ ${found} pistes importées sur ${tracks.length}${skipped ? ` (${skipped} introuvables)` : ''}</div>
-        <div style="margin-top:14px;text-align:right;">
-            <button onclick="closeImportSpotifyModal();openPlaylistView('${playlistId}')"
-                    style="background:#1db954;color:#000;border:none;border-radius:500px;
-                           padding:10px 22px;font-weight:700;font-family:inherit;
-                           font-size:.85rem;cursor:pointer;">
-                Ouvrir la playlist →
-            </button>
-        </div>`;
-    btn.disabled = false;
-}
+    throw new Error('Aucun titre trouvé. Regardez la console (F12) pour l\'extrait HTML.');
