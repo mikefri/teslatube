@@ -57,18 +57,10 @@
                 <button onclick="openAdTipsModal()" style="color:#b3b3b3;background:none;border:none;cursor:pointer;font-size:.85rem;">
     🚫 Supprimer les pubs
 </button>
-     <button onclick="openImportSpotifyModal()"
-        style="color:#b3b3b3;background:none;border:none;cursor:pointer;font-size:.85rem;
-               display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:6px;
-               width:100%;text-align:left;font-family:inherit;
-               transition:background .18s,color .18s;"
-        onmouseover="this.style.background='rgba(255,255,255,.06)';this.style.color='#fff'"
-        onmouseout="this.style.background='none';this.style.color='#b3b3b3'">
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-        <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 01-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.623.623 0 01-.277-1.215c3.809-.87 7.076-.496 9.712 1.115a.624.624 0 01.207.857zm1.223-2.722a.78.78 0 01-1.072.257c-2.687-1.652-6.785-2.131-9.965-1.166a.78.78 0 01-.973-.519.781.781 0 01.519-.972c3.632-1.102 8.147-.568 11.234 1.328a.78.78 0 01.257 1.072zm.105-2.835c-3.223-1.914-8.54-2.09-11.618-1.156a.935.935 0 01-.582-1.782c3.532-1.153 9.404-.93 13.115 1.338a.933.933 0 11-.915 1.6z"/>
-    </svg>
+<button onclick="openImportSpotifyModal()" style="color:#b3b3b3;background:none;border:none;cursor:pointer;font-size:.85rem;display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:6px;width:100%;text-align:left;font-family:inherit;">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 01-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.623.623 0 01-.277-1.215c3.809-.87 7.076-.496 9.712 1.115a.624.624 0 01.207.857zm1.223-2.722a.78.78 0 01-1.072.257c-2.687-1.652-6.785-2.131-9.965-1.166a.78.78 0 01-.973-.519.781.781 0 01.519-.972c3.632-1.102 8.147-.568 11.234 1.328a.78.78 0 01.257 1.072zm.105-2.835c-3.223-1.914-8.54-2.09-11.618-1.156a.935.935 0 01-.582-1.782c3.532-1.153 9.404-.93 13.115 1.338a.933.933 0 11-.915 1.6z"/></svg>
     Importer depuis Spotify
-</button>           
+</button>          
             </nav>
         </div>
 
@@ -446,6 +438,26 @@
         </div>
     </div>
 </div>
-    
+    <!-- MODALE IMPORT SPOTIFY -->
+<div id="spotify-import-overlay" onclick="if(event.target===this)closeImportSpotifyModal()" style="display:none;position:fixed;inset:0;z-index:2500;background:rgba(0,0,0,.82);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:16px;">
+    <div style="background:#161616;border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:32px 28px;width:100%;max-width:460px;box-shadow:0 24px 80px rgba(0,0,0,.8);position:relative;">
+        <button onclick="closeImportSpotifyModal()" style="position:absolute;top:14px;right:14px;background:rgba(255,255,255,.07);border:none;color:#fff;width:30px;height:30px;border-radius:50%;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="#1DB954"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 01-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.623.623 0 01-.277-1.215c3.809-.87 7.076-.496 9.712 1.115a.624.624 0 01.207.857zm1.223-2.722a.78.78 0 01-1.072.257c-2.687-1.652-6.785-2.131-9.965-1.166a.78.78 0 01-.973-.519.781.781 0 01.519-.972c3.632-1.102 8.147-.568 11.234 1.328a.78.78 0 01.257 1.072zm.105-2.835c-3.223-1.914-8.54-2.09-11.618-1.156a.935.935 0 01-.582-1.782c3.532-1.153 9.404-.93 13.115 1.338a.933.933 0 11-.915 1.6z"/></svg>
+            <h3 style="color:#fff;font-size:1.15rem;font-weight:700;margin:0;">Importer depuis Spotify</h3>
+        </div>
+        <p style="color:#888;font-size:.82rem;margin:0 0 22px;line-height:1.6;">Collez un lien Spotify <strong style="color:#b3b3b3">album</strong> ou <strong style="color:#b3b3b3">playlist publique</strong>. TeslaTube cherchera chaque titre sur YouTube.</p>
+        <div style="display:flex;gap:8px;margin-bottom:18px;">
+            <input id="spotify-url-input" type="url" placeholder="https://open.spotify.com/album/…" autocomplete="off" spellcheck="false"
+                   onkeydown="if(event.key==='Enter')importFromSpotify()"
+                   style="flex:1;padding:12px 14px;border-radius:8px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:#fff;font-size:.88rem;font-family:inherit;outline:none;">
+            <button id="spotify-import-btn" onclick="importFromSpotify()"
+                    style="padding:12px 20px;background:#1db954;border:none;border-radius:8px;color:#000;font-weight:700;font-size:.88rem;font-family:inherit;cursor:pointer;white-space:nowrap;">
+                Importer
+            </button>
+        </div>
+        <div id="spotify-import-status" style="font-size:.83rem;line-height:1.8;min-height:20px;"></div>
+    </div>
+</div>
 </body>
 </html>
