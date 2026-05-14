@@ -1580,3 +1580,56 @@ a      { text-decoration: none; color: inherit; }
     color: var(--text-main);
     text-decoration: underline;
 }
+/* ── Modale import Spotify ── */
+#spotify-import-overlay.open {
+    display: flex !important;
+    animation: adFadeIn .2s ease both;
+}
+ 
+.spi-step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 0;
+    color: #888;
+    font-size: .83rem;
+    transition: color .2s;
+}
+.spi-step.active { color: #fff; }
+.spi-step.done   { color: #1db954; }
+ 
+.spi-progress-wrap {
+    background: rgba(255,255,255,.08);
+    border-radius: 500px;
+    height: 4px;
+    margin: 10px 0 6px;
+    overflow: hidden;
+}
+.spi-progress-bar {
+    height: 100%;
+    background: #1db954;
+    border-radius: 500px;
+    transition: width .3s ease;
+}
+ 
+.spi-done-actions {
+    margin-top: 16px;
+    display: flex;
+    justify-content: flex-end;
+}
+.spi-open-btn {
+    background: #1db954;
+    color: #000;
+    border: none;
+    border-radius: 500px;
+    padding: 10px 22px;
+    font-weight: 700;
+    font-family: inherit;
+    font-size: .85rem;
+    cursor: pointer;
+    transition: background .15s, transform .15s;
+}
+.spi-open-btn:hover {
+    background: #21d15e;
+    transform: scale(1.04);
+}
