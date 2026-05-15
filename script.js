@@ -18,7 +18,26 @@ const firebaseConfig = {
     measurementId:     "G-K05WJMWGGH"
 };
 
-const YOUTUBE_API_KEY = "AIzaSyBX9_dZTK6PHaCI9_kOnT4jguY0u64o-54";
+const YOUTUBE_API_KEYS = [
+  "AIzaSyBX9_dZTK6PHaCI9_kOnT4jguY0u64o-54",  // clé 1 (existante)
+  "AIzaSyDIRBZJETEP7S9E38HQ41LrCqirvUprspo",                      // clé 2
+  // "VOTRE_TROISIEME_CLE_ICI",                  // clé 3 (optionnel)
+];
+let _keyIndex = 0;
+
+function getApiKey() {
+  return YOUTUBE_API_KEYS[_keyIndex % YOUTUBE_API_KEYS.length];
+}
+
+function rotateApiKey() {
+  _keyIndex++;
+  if (_keyIndex >= YOUTUBE_API_KEYS.length) {
+    showToast('⚠️ Toutes les clés API sont épuisées aujourd\'hui');
+    return false;
+  }
+  showToast(`Clé API ${_keyIndex + 1}/${YOUTUBE_API_KEYS.length} utilisée`);
+  return true;
+}
 
 // ── Init Firebase ──
 firebase.initializeApp(firebaseConfig);
@@ -449,7 +468,7 @@ async function searchMusic(append = false) {
 
     showSkeletons(append ? 6 : 18);
 
-    let url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(q)}&type=video&videoCategoryId=10&maxResults=18&key=${YOUTUBE_API_KEY}`;
+    let url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(q)}&type=video&videoCategoryId=10&maxResults=18&key=${getApiKey()}`;
     if (append && nextPageToken) url += `&pageToken=${nextPageToken}`;
 
     try {
@@ -465,7 +484,7 @@ async function searchMusic(append = false) {
 
         const items      = data.items || [];
         const ids        = items.map(i => i.id.videoId).join(',');
-        const detailsUrl = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails,statistics&id=${ids}&key=${YOUTUBE_API_KEY}`;
+        const detailsUrl = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails,statistics&id=${ids}&key=${getApiKey()}`;
         const details    = await (await fetch(detailsUrl)).json();
         const durMap     = {};
         (details.items || []).forEach(v => {
@@ -482,9 +501,13 @@ async function searchMusic(append = false) {
 
         renderResults(items, durMap, append);
     } catch (e) {
-        document.getElementById('results').innerHTML =
-            '<div style="color:#b3b3b3;padding:24px 0;">Erreur réseau.</div>';
+    // Si erreur quota → essayer la clé suivante
+    if (e?.message?.includes('quota') || e?.status === 403) {
+        if (rotateApiKey()) { searchMusic(append); return; }
     }
+    document.getElementById('results').innerHTML =
+        '<div style="color:#b3b3b3;padding:24px 0;">Erreur réseau.</div>';
+}
 }
 
 function renderResults(items, durMap = {}, append = false) {
