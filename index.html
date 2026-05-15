@@ -27,48 +27,7 @@
 
 
 
-  <style>
-@media (max-width: 639px) {
-    .music-grid {
-        display: grid !important;
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 8px !important;
-    }
-    .track-card {
-        padding: 8px !important;
-    }
-    .track-card img {
-        aspect-ratio: 16 / 9 !important;
-        width: 100% !important;
-    }
-    .card-img-wrap {
-        aspect-ratio: 16 / 9 !important;
-        margin-bottom: 8px !important;
-    }
-    .track-card h4 {
-        font-size: .72rem !important;
-        margin-bottom: 2px !important;
-    }
-    .track-card p {
-        font-size: .65rem !important;
-    }
-    .card-play-btn {
-        width: 28px !important;
-        height: 28px !important;
-    }
-}
-@media (max-width: 639px) {
-    .track-card:hover {
-        transform: none !important;
-        box-shadow: none !important;
-    }
-    .track-card:active {
-        transform: scale(0.97) !important;
-        transition: transform 0.1s !important;
-    }
-}
-      
-</style>  
+  
     
 </head>
 
@@ -546,5 +505,7 @@
         <div id="spotify-import-status" style="font-size:.83rem;line-height:1.7;min-height:20px;"></div>
     </div>
 </div>  
+
+    <script src="mobile-patch.js"></script>
 </body>
 </html>
