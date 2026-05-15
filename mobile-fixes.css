@@ -281,3 +281,41 @@
     .music-grid { grid-template-columns: repeat(4, 1fr) !important; }
     .toast      { bottom: 100px !important; }
 }
+@media (max-width: 639px) {
+
+    /* ── 2 colonnes compactes ── */
+    .music-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+    }
+
+    .track-card {
+        padding: 8px !important;
+    }
+
+    /* Vignette moins haute */
+    .track-card img,
+    .card-img-wrap {
+        aspect-ratio: 16 / 9 !important;
+    }
+
+    .card-img-wrap {
+        margin-bottom: 8px !important;
+    }
+
+    .track-card h4 {
+        font-size: .72rem !important;
+        margin-bottom: 2px !important;
+    }
+
+    .track-card p {
+        font-size: .65rem !important;
+    }
+
+    .card-play-btn {
+        width: 30px !important;
+        height: 30px !important;
+        bottom: 6px !important;
+        right: 6px !important;
+    }
+}
