@@ -1910,5 +1910,8 @@ function forceMobileGrid() {
     document.querySelectorAll('.track-card').forEach(el => {
         el.style.minWidth = '0';
         el.style.overflow = 'hidden';
+        // Désactive le hover transform sur mobile
+        el.style.transform = 'none';
+        el.style.transition = 'none';
     });
 }
