@@ -1200,6 +1200,8 @@ function renderPlaylistView(id) {
         });
         listEl.appendChild(div);
     });
+
+   fixPlaylistMobileLayout();
 }
 
 function renderCurrentPlaylistHighlight() {
@@ -1914,4 +1916,39 @@ function forceMobileGrid() {
         el.style.transform = 'none';
         el.style.transition = 'none';
     });
+}
+
+function fixPlaylistMobileLayout() {
+    if (window.innerWidth > 639) return;
+
+    const hero = document.getElementById('pl-hero');
+    if (hero) {
+        hero.style.setProperty('display', 'flex', 'important');
+        hero.style.setProperty('flex-direction', 'column', 'important');
+        hero.style.setProperty('align-items', 'center', 'important');
+        hero.style.setProperty('text-align', 'center', 'important');
+        hero.style.setProperty('padding', '24px 16px 16px', 'important');
+        hero.style.setProperty('min-height', 'auto', 'important');
+        hero.style.setProperty('gap', '16px', 'important');
+    }
+
+    const art = hero?.querySelector('.pl-hero-art');
+    if (art) {
+        art.style.setProperty('width', '150px', 'important');
+        art.style.setProperty('height', '150px', 'important');
+        art.style.setProperty('margin', '0 auto', 'important');
+        art.style.setProperty('flex-shrink', '0', 'important');
+    }
+
+    const info = hero?.querySelector('.pl-hero-info');
+    if (info) {
+        info.style.setProperty('text-align', 'center', 'important');
+        info.style.setProperty('width', '100%', 'important');
+    }
+
+    const controls = document.getElementById('pl-controls');
+    if (controls) {
+        controls.style.setProperty('justify-content', 'center', 'important');
+        controls.style.setProperty('width', '100%', 'important');
+    }
 }
