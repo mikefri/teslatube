@@ -1116,9 +1116,20 @@ function renderPlaylistView(id) {
     const coverHTML  = buildCoverHTML(pl.tracks, pl.color, '100%');
     const nowPlaying = isPlaylistPlaying(id);
 
-    document.getElementById('pl-hero').innerHTML = `
-        <div class="pl-hero-art" style="background:${pl.color};overflow:hidden;">${coverHTML}</div>
-        <div class="pl-hero-info">
+const isMobile = window.innerWidth <= 639;
+
+// Forcer le style directement sur l'élément AVANT innerHTML
+const plHeroEl = document.getElementById('pl-hero');
+if (isMobile) {
+    plHeroEl.style.cssText = 'display:flex;flex-direction:column;align-items:center;text-align:center;padding:24px 16px 16px;min-height:auto;gap:16px;width:100%;box-sizing:border-box;';
+}
+
+const artStyle = `background:${pl.color};overflow:hidden;${isMobile ? 'width:150px;height:150px;margin:0 auto;flex-shrink:0;' : ''}`;
+const infoStyle = isMobile ? 'text-align:center;width:100%;' : '';
+
+plHeroEl.innerHTML = `
+    <div class="pl-hero-art" style="${artStyle}">${coverHTML}</div>
+        <div class="pl-hero-info" style="${infoStyle}">
             <p class="pl-hero-type">Playlist</p>
             <h1 class="pl-hero-name" id="pl-editable-name" contenteditable="true" spellcheck="false">${esc(pl.name)}</h1>
             <p class="pl-hero-meta"><strong>${pl.tracks.length}</strong> piste${pl.tracks.length !== 1 ? 's' : ''} · ${calcTotalDuration(pl.tracks)}</p>
