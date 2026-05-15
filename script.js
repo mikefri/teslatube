@@ -554,6 +554,7 @@ function renderResults(items, durMap = {}, append = false) {
         </button>`;
         container.appendChild(wrap);
     }
+   forceMobileGrid();
 }
 
 function searchByArtist(artistName) {
@@ -1898,4 +1899,12 @@ function switchAdTab(tab, btn) {
         const el = document.getElementById(`tab-${t}`);
         if (el) el.style.display = t === tab ? 'block' : 'none';
     });
+}
+function forceMobileGrid() {
+    if (window.innerWidth > 639) return;
+    const grid = document.getElementById('results');
+    if (!grid) return;
+    grid.style.setProperty('display', 'grid', 'important');
+    grid.style.setProperty('grid-template-columns', 'repeat(2, 1fr)', 'important');
+    grid.style.setProperty('gap', '8px', 'important');
 }
