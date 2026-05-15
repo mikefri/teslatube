@@ -65,7 +65,7 @@
     .sidebar.mobile-open .lib-item-thumb        { width: 52px !important; height: 52px !important; }
     .sidebar.mobile-open .lib-item-info         { display: flex !important; }
     .sidebar.mobile-open .lib-item-more         { display: flex !important; }
-    .sidebar.mobile-open .lib-empty             { display: block !important; }
+    
     .sidebar.mobile-open .sidebar-top           { flex-shrink: 0; }
     .sidebar.mobile-open .sidebar-library       { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
     .sidebar.mobile-open .lib-list              { flex: 1; overflow-y: auto; }
