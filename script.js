@@ -1905,6 +1905,10 @@ function forceMobileGrid() {
     const grid = document.getElementById('results');
     if (!grid) return;
     grid.style.setProperty('display', 'grid', 'important');
-    grid.style.setProperty('grid-template-columns', 'repeat(2, 1fr)', 'important');
+    grid.style.setProperty('grid-template-columns', 'repeat(2, minmax(0, 1fr))', 'important');
     grid.style.setProperty('gap', '8px', 'important');
+    document.querySelectorAll('.track-card').forEach(el => {
+        el.style.minWidth = '0';
+        el.style.overflow = 'hidden';
+    });
 }
