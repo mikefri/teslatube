@@ -1580,3 +1580,117 @@ a      { text-decoration: none; color: inherit; }
     color: var(--text-main);
     text-decoration: underline;
 }
+/* ═══════════════════════════════════════════════════
+   CONNECT — styles (à ajouter à la fin de style.css)
+   ══════════════════════════════════════════════════ */
+ 
+#connect-popup {
+    position: fixed;
+    z-index: 2000;
+    background: #222;
+    border: 1px solid rgba(255,255,255,.13);
+    border-radius: 12px;
+    box-shadow: 0 16px 64px rgba(0,0,0,.7);
+    padding: 8px 0 10px;
+    min-width: 240px;
+    animation: connectFadeIn .15s ease both;
+}
+ 
+@keyframes connectFadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+ 
+.connect-popup-title {
+    padding: 6px 16px 10px;
+    font-size: .7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4px;
+}
+ 
+.connect-loading,
+.connect-empty {
+    padding: 14px 16px;
+    font-size: .82rem;
+    color: var(--text-sub);
+    line-height: 1.5;
+    text-align: center;
+}
+ 
+.connect-empty small {
+    font-size: .74rem;
+    color: var(--text-muted);
+}
+ 
+.connect-device-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 10px 16px;
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    transition: background .15s;
+    border-radius: 0;
+}
+ 
+.connect-device-btn:hover:not(.connect-device-active) {
+    background: rgba(255,255,255,.07);
+}
+ 
+.connect-device-active {
+    cursor: default;
+}
+ 
+.connect-device-icon {
+    color: var(--green);
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+ 
+.connect-device-active .connect-device-icon {
+    color: var(--green);
+}
+ 
+.connect-device-btn:not(.connect-device-active) .connect-device-icon {
+    color: var(--text-sub);
+}
+ 
+.connect-device-meta {
+    flex: 1;
+    min-width: 0;
+}
+ 
+.connect-device-name {
+    display: block;
+    font-size: .84rem;
+    font-weight: 600;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+ 
+.connect-device-sub {
+    display: block;
+    font-size: .72rem;
+    color: var(--text-sub);
+    margin-top: 1px;
+}
+ 
+.connect-device-active .connect-device-name {
+    color: var(--green);
+}
+ 
+/* Bouton dans la player bar */
+#btn-connect.active {
+    color: var(--green);
+}
