@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="mobile-fixes.css">
+    <link rel="stylesheet" href="connect.css">
     <script src="https://www.youtube.com/iframe_api"></script>
 
     <!-- ═══ FIREBASE SDK ═══ -->
@@ -91,7 +92,7 @@
         padding: 2px 8px;
         letter-spacing: .05em;
         align-self: center;
-    ">v4.0</span>
+    ">v4.1</span>
             </div>
             <nav class="sidebar-nav">
 
@@ -276,7 +277,12 @@
         </button>
     </div>
 </div>
-            
+            <button class="ctrl-icon" id="btn-connect" title="Diffuser sur"
+        onclick="openConnectPopup(this)">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+        <path d="M1 18v3h3a3 3 0 00-3-3zm0-4v2a7 7 0 017 7h2a9 9 0 00-9-9zm0-4v2a11 11 0 0111 11h2C14 13 8 7 1 10zm21-8H2v2h20V2z"/>
+    </svg>
+</button>
             <button class="ctrl-icon" id="btn-queue-toggle" onclick="toggleQueue()"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M15 4a1 1 0 100 2h6a1 1 0 100-2h-6zm0 5a1 1 0 100 2h6a1 1 0 100-2h-6zm0 5a1 1 0 100 2h6a1 1 0 100-2h-6zM6 4a1 1 0 00-1 1v8.5a2.5 2.5 0 101 0V5a1 1 0 00-1-1zm0 13a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"/></svg></button>
             <div class="volume-control">
                 <button class="ctrl-icon" id="btn-mute" onclick="toggleMute()">
@@ -548,5 +554,6 @@
 </div>  
 
     <script src="mobile-patch.js"></script>
+    <script src="connect.js"></script>
 </body>
 </html>
