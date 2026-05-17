@@ -18,62 +18,34 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 
     <meta name="theme-color" content="#000000">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
-<meta name="apple-mobile-web-app-title" content="TeslaTube">
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="TeslaTube">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
 
-<style>
-@media (max-width: 639px) {
-    .music-grid {
-        display: grid !important;
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 8px !important;
-    }
-    .track-card {
-        padding: 8px !important;
-    }
-    .track-card img {
-        aspect-ratio: 16 / 9 !important;
-        width: 100% !important;
-    }
-    .card-img-wrap {
-        aspect-ratio: 16 / 9 !important;
-        margin-bottom: 8px !important;
-    }
-    .track-card h4 {
-        font-size: .72rem !important;
-        margin-bottom: 2px !important;
-    }
-    .track-card p {
-        font-size: .65rem !important;
-    }
-    .card-play-btn {
-        width: 28px !important;
-        height: 28px !important;
-    }
-}
-@media (max-width: 639px) {
-    .track-card:hover {
-        transform: none !important;
-        box-shadow: none !important;
-    }
-    .track-card:active {
-        transform: scale(0.97) !important;
-        transition: transform 0.1s !important;
-    }
-}
-      
-</style>  
-
-
-  
-    
+    <style>
+        @media (max-width: 639px) {
+            .music-grid {
+                display: grid !important;
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 8px !important;
+            }
+            .track-card { padding: 8px !important; }
+            .track-card img { aspect-ratio: 16 / 9 !important; width: 100% !important; }
+            .card-img-wrap { aspect-ratio: 16 / 9 !important; margin-bottom: 8px !important; }
+            .track-card h4 { font-size: .72rem !important; margin-bottom: 2px !important; }
+            .track-card p  { font-size: .65rem !important; }
+            .card-play-btn { width: 28px !important; height: 28px !important; }
+        }
+        @media (max-width: 639px) {
+            .track-card:hover  { transform: none !important; box-shadow: none !important; }
+            .track-card:active { transform: scale(0.97) !important; transition: transform 0.1s !important; }
+        }
+    </style>
 </head>
 
-    
 <body>
 <div class="app" id="app">
 
@@ -83,25 +55,14 @@
             <div class="logo">
                 <svg viewBox="0 0 24 24" fill="#1DB954" width="28" height="28"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 01-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.623.623 0 01-.277-1.215c3.809-.87 7.076-.496 9.712 1.115a.624.624 0 01.207.857zm1.223-2.722a.78.78 0 01-1.072.257c-2.687-1.652-6.785-2.131-9.965-1.166a.78.78 0 01-.973-.519.781.781 0 01.519-.972c3.632-1.102 8.147-.568 11.234 1.328a.78.78 0 01.257 1.072zm.105-2.835c-3.223-1.914-8.54-2.09-11.618-1.156a.935.935 0 01-.582-1.782c3.532-1.153 9.404-.93 13.115 1.338a.933.933 0 11-.915 1.6z"/></svg>
                 <span>TeslaTube</span>
-    <span style="
-        font-size: .6rem;
-        font-weight: 600;
-        color: #b3b3b3;
-        background: rgba(255,255,255,.1);
-        border-radius: 500px;
-        padding: 2px 8px;
-        letter-spacing: .05em;
-        align-self: center;
-    ">v4.1</span>
+                <span style="font-size:.6rem;font-weight:600;color:#b3b3b3;background:rgba(255,255,255,.1);border-radius:500px;padding:2px 8px;letter-spacing:.05em;align-self:center;">v4.1</span>
             </div>
             <nav class="sidebar-nav">
-
                 <a class="nav-item" id="nav-search" onclick="focusSearch()">
                     <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M10.533 1.279c-5.18 0-9.407 4.226-9.407 9.407 0 5.18 4.226 9.407 9.407 9.407 2.19 0 4.2-.755 5.8-2.02l4.996 4.997a1 1 0 001.414-1.414l-4.994-4.994a9.368 9.368 0 002.191-6.976 9.407 9.407 0 00-9.407-9.407zm-7.407 9.407a7.407 7.407 0 1114.814 0 7.407 7.407 0 01-14.814 0z"/></svg>
                     Rechercher
                 </a>
                 <button onclick="logout()" style="color:#b3b3b3;background:none;border:none;cursor:pointer;font-size:.85rem;">Déconnexion</button>
-                
             </nav>
         </div>
 
@@ -119,8 +80,7 @@
                 <button class="lib-chip active" onclick="filterLib('all',this)">Tout</button>
                 <button class="lib-chip" onclick="filterLib('playlist',this)">Playlists</button>
             </div>
-            <!-- Firebase sync indicator -->
-            <div id="sync-indicator" style="display:none;padding:6px 12px;font-size:.72rem;color:#1db954;display:flex;align-items:center;gap:6px;">
+            <div id="sync-indicator" style="display:none;padding:6px 12px;font-size:.72rem;color:#1db954;align-items:center;gap:6px;">
                 <svg viewBox="0 0 24 24" width="12" height="12" fill="#1db954"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
                 Synchronisé
             </div>
@@ -138,26 +98,23 @@
     <!-- ═══ MAIN CONTENT ═══ -->
     <main class="main-content" id="main-content">
         <div class="topbar" id="topbar">
-            <div class="topbar-nav">
-
-            </div>
+            <div class="topbar-nav"></div>
             <div class="search-wrap">
-    <svg class="search-icon-inp" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M10.533 1.279c-5.18 0-9.407 4.226-9.407 9.407 0 5.18 4.226 9.407 9.407 9.407 2.19 0 4.2-.755 5.8-2.02l4.996 4.997a1 1 0 001.414-1.414l-4.994-4.994a9.368 9.368 0 002.191-6.976 9.407 9.407 0 00-9.407-9.407zm-7.407 9.407a7.407 7.407 0 1114.814 0 7.407 7.407 0 01-14.814 0z"/></svg>
-    <input type="text" id="search-input" placeholder="Que souhaitez-vous écouter ?"
-       autocomplete="off"
-       autocorrect="off"
-       autocapitalize="off"
-       spellcheck="false">
-    <button id="search-clear" onclick="clearSearch()" title="Effacer">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M4.293 4.293a1 1 0 011.414 0L12 10.586l6.293-6.293a1 1 0 111.414 1.414L13.414 12l6.293 6.293a1 1 0 01-1.414 1.414L12 13.414l-6.293 6.293a1 1 0 01-1.414-1.414L10.586 12 4.293 5.707a1 1 0 010-1.414z"/></svg>
-    </button>
-    <button id="search-btn">Rechercher</button>
-</div>
+                <svg class="search-icon-inp" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M10.533 1.279c-5.18 0-9.407 4.226-9.407 9.407 0 5.18 4.226 9.407 9.407 9.407 2.19 0 4.2-.755 5.8-2.02l4.996 4.997a1 1 0 001.414-1.414l-4.994-4.994a9.368 9.368 0 002.191-6.976 9.407 9.407 0 00-9.407-9.407zm-7.407 9.407a7.407 7.407 0 1114.814 0 7.407 7.407 0 01-14.814 0z"/></svg>
+                <input type="text" id="search-input" placeholder="Que souhaitez-vous écouter ?"
+                    autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                <button id="search-clear" onclick="clearSearch()" title="Effacer">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M4.293 4.293a1 1 0 011.414 0L12 10.586l6.293-6.293a1 1 0 111.414 1.414L13.414 12l6.293 6.293a1 1 0 01-1.414 1.414L12 13.414l-6.293 6.293a1 1 0 01-1.414-1.414L10.586 12 4.293 5.707a1 1 0 010-1.414z"/></svg>
+                </button>
+                <button id="search-btn">Rechercher</button>
+            </div>
             <div class="topbar-right"></div>
         </div>
-<section id="home-section" style="display:none;">
-    <div id="home-content"></div>
-</section>
+
+        <section id="home-section" style="display:none;">
+            <div id="home-content"></div>
+        </section>
+
         <!-- SEARCH -->
         <section id="search-section" class="section-pad">
             <div id="results-placeholder" class="results-placeholder">
@@ -169,7 +126,7 @@
         </section>
 
         <!-- PLAYLIST VIEW -->
-        <section id="playlist-view-section" style="display:none; padding-bottom:80px;">
+        <section id="playlist-view-section" style="display:none;padding-bottom:80px;">
             <div class="pl-hero" id="pl-hero"></div>
             <div class="section-pad" style="padding-top:0;">
                 <div class="pl-controls" id="pl-controls"></div>
@@ -194,8 +151,8 @@
     <aside class="queue-panel" id="queue-panel">
         <div class="queue-header">
             <div class="queue-tabs">
-<button class="queue-tab active" onclick="switchQueueTab('queue',this)">File d'attente</button>
-<button class="queue-tab" onclick="switchQueueTab('recent',this)">Récemment joués</button>
+                <button class="queue-tab active" onclick="switchQueueTab('queue',this)">File d'attente</button>
+                <button class="queue-tab" onclick="switchQueueTab('recent',this)">Récemment joués</button>
             </div>
         </div>
         <div class="queue-section-label">Pistes suivantes</div>
@@ -216,6 +173,8 @@
 
     <!-- ═══ PLAYER BAR ═══ -->
     <footer class="player-bar">
+
+        <!-- GAUCHE : pochette + infos + actions (❤️ 📡 sur mobile) -->
         <div class="player-left">
             <div class="player-thumb">
                 <img id="current-track-img" src="" alt="" style="display:none">
@@ -227,63 +186,92 @@
                 <span id="current-track-title" class="player-track-title">Aucun titre</span>
                 <span id="current-track-artist" class="player-track-artist">Artiste</span>
             </div>
+
+            <!-- Actions visibles sur MOBILE (❤️ et 📡) -->
             <div class="player-track-actions">
                 <button class="ctrl-icon" id="btn-heart" title="Aimer">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12.442 19.91c-.338.35-.88.35-1.217 0C9.501 18.017 2 12.83 2 8.5 2 5.42 4.42 3 7.5 3c1.49 0 2.87.61 3.872 1.688L12 5.4l.628-.712A5.496 5.496 0 0116.5 3C19.58 3 22 5.42 22 8.5c0 4.33-7.501 9.516-9.225 11.286l-.333.124z"/></svg>
                 </button>
+
+                <!-- 📡 Bouton Diffuser sur — visible partout, surtout mobile -->
+                <button class="ctrl-icon" id="btn-connect-mobile" title="Diffuser sur" onclick="openConnectPopup(this)">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                        <path d="M1 18v3h3a3 3 0 00-3-3zm0-4v2a7 7 0 017 7h2a9 9 0 00-9-9zm0-4v2a11 11 0 0111 11h2C14 13 8 7 1 10zm21-8H2v2h20V2z"/>
+                    </svg>
+                </button>
+
                 <div id="sleep-badge">
-    <svg viewBox="0 0 24 24" width="10" height="10" fill="currentColor"><path d="M12.0488 2.0127A10 10 0 1021.988 11.951 8 8 0 0112.0488 2.013z"/></svg>
-    <span id="sleep-badge-time"></span>
-</div>
+                    <svg viewBox="0 0 24 24" width="10" height="10" fill="currentColor"><path d="M12.0488 2.0127A10 10 0 1021.988 11.951 8 8 0 0112.0488 2.013z"/></svg>
+                    <span id="sleep-badge-time"></span>
+                </div>
             </div>
         </div>
+
+        <!-- CENTRE : contrôles + barre de progression -->
         <div class="player-center">
             <div class="controls-row">
-                <button class="ctrl-icon ctrl-sm" id="btn-shuffle"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M16.464 3.162A1 1 0 0117 4v1.5l1.293-1.293a1 1 0 011.414 1.414L17.414 7.5 19 7.5a1 1 0 110 2l-3 .001a1 1 0 01-.707-.294L13.586 7.5h-1.672A6.972 6.972 0 0110 9.207V7.586l.293-.293A4.972 4.972 0 0113.914 6H16V4a1 1 0 01.464-.838zM10 14.793a6.972 6.972 0 01-1.914 1.621L7.793 16.707 8 16.914V19a1 1 0 01-2 0v-1.5l-1.293 1.293a1 1 0 01-1.414-1.414L4.586 16.5 3 16.5a1 1 0 110-2l3-.001a1 1 0 01.707.294l1.707 1.707h1.672A6.972 6.972 0 0112 14.793v2.035l-.293.293A4.972 4.972 0 018.086 18H6v2a1 1 0 01-1.464.836zM17 16v1.5l1.707-1.707a1 1 0 011.414 0l.586.586a1 1 0 010 1.414L19 19.5l-1.293 1.293A1 1 0 0116 20v-2.086a4.972 4.972 0 01-3.414-2.121l-.293-.293V13.5a6.972 6.972 0 011.914 1.621L15.5 16.414l.207-.207A1 1 0 0117 16zM7 8v-2a1 1 0 00-2 0v1.5L3.707 6.207a1 1 0 00-1.414 1.414L3.586 8.914 3 8.914a1 1 0 000 2l3 .001a1 1 0 00.707-.294L8.414 9.914H10.086A6.972 6.972 0 0110 8.293v-.707A4.972 4.972 0 017.086 10H5V8z"/></svg></button>
-                <button class="ctrl-icon ctrl-md" onclick="prevTrack()"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M3.341 4.165a1 1 0 011.659.752v4.828l9.542-5.503A2 2 0 0117 5.972v12.056a2 2 0 01-2.458 1.949L5 16.974V21.083a1 1 0 01-1.659.752l-.341-.295V4.46l.341-.295z"/></svg></button>
+                <button class="ctrl-icon ctrl-sm" id="btn-shuffle">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M16.464 3.162A1 1 0 0117 4v1.5l1.293-1.293a1 1 0 011.414 1.414L17.414 7.5 19 7.5a1 1 0 110 2l-3 .001a1 1 0 01-.707-.294L13.586 7.5h-1.672A6.972 6.972 0 0110 9.207V7.586l.293-.293A4.972 4.972 0 0113.914 6H16V4a1 1 0 01.464-.838zM10 14.793a6.972 6.972 0 01-1.914 1.621L7.793 16.707 8 16.914V19a1 1 0 01-2 0v-1.5l-1.293 1.293a1 1 0 01-1.414-1.414L4.586 16.5 3 16.5a1 1 0 110-2l3-.001a1 1 0 01.707.294l1.707 1.707h1.672A6.972 6.972 0 0112 14.793v2.035l-.293.293A4.972 4.972 0 018.086 18H6v2a1 1 0 01-1.464.836zM17 16v1.5l1.707-1.707a1 1 0 011.414 0l.586.586a1 1 0 010 1.414L19 19.5l-1.293 1.293A1 1 0 0116 20v-2.086a4.972 4.972 0 01-3.414-2.121l-.293-.293V13.5a6.972 6.972 0 011.914 1.621L15.5 16.414l.207-.207A1 1 0 0117 16zM7 8v-2a1 1 0 00-2 0v1.5L3.707 6.207a1 1 0 00-1.414 1.414L3.586 8.914 3 8.914a1 1 0 000 2l3 .001a1 1 0 00.707-.294L8.414 9.914H10.086A6.972 6.972 0 0110 8.293v-.707A4.972 4.972 0 017.086 10H5V8z"/></svg>
+                </button>
+                <button class="ctrl-icon ctrl-md" onclick="prevTrack()">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M3.341 4.165a1 1 0 011.659.752v4.828l9.542-5.503A2 2 0 0117 5.972v12.056a2 2 0 01-2.458 1.949L5 16.974V21.083a1 1 0 01-1.659.752l-.341-.295V4.46l.341-.295z"/></svg>
+                </button>
                 <button class="btn-play-circle" id="btn-play" onclick="togglePlay()">
                     <svg id="icon-play"  viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M7.05 3.606l13.49 7.788a.7.7 0 010 1.212L7.05 20.394A.7.7 0 016 19.788V4.212a.7.7 0 011.05-.606z"/></svg>
                     <svg id="icon-pause" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="display:none"><path d="M5.7 3a.7.7 0 00-.7.7v16.6a.7.7 0 00.7.7h2.6a.7.7 0 00.7-.7V3.7a.7.7 0 00-.7-.7H5.7zm10 0a.7.7 0 00-.7.7v16.6a.7.7 0 00.7.7h2.6a.7.7 0 00.7-.7V3.7a.7.7 0 00-.7-.7h-2.6z"/></svg>
                 </button>
-                <button class="ctrl-icon ctrl-md" onclick="nextTrack()"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M20.659 4.165a1 1 0 00-1.659.752v4.828L9.458 4.242A2 2 0 007 5.972v12.056a2 2 0 002.458 1.949L19 16.974V21.083a1 1 0 001.659.752l.341-.295V4.46l-.341-.295z"/></svg></button>
-                <button class="ctrl-icon ctrl-sm" id="btn-repeat"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M0 13.151A8.001 8.001 0 0010.91 20.82L9.949 19.14a6 6 0 01-7.938-4.148H4l-3-3-3 3h1.999c0 .052.001.104.001.16zM16 4.151l-.001.036H14l3 3 3-3h-2A8.001 8.001 0 003.099 11.229l1.94.485A6.001 6.001 0 0116 4.151z"/></svg></button>
+                <button class="ctrl-icon ctrl-md" onclick="nextTrack()">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M20.659 4.165a1 1 0 00-1.659.752v4.828L9.458 4.242A2 2 0 007 5.972v12.056a2 2 0 002.458 1.949L19 16.974V21.083a1 1 0 001.659.752l.341-.295V4.46l-.341-.295z"/></svg>
+                </button>
+                <button class="ctrl-icon ctrl-sm" id="btn-repeat">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M0 13.151A8.001 8.001 0 0010.91 20.82L9.949 19.14a6 6 0 01-7.938-4.148H4l-3-3-3 3h1.999c0 .052.001.104.001.16zM16 4.151l-.001.036H14l3 3 3-3h-2A8.001 8.001 0 003.099 11.229l1.94.485A6.001 6.001 0 0116 4.151z"/></svg>
+                </button>
             </div>
             <div class="progress-row">
                 <span id="time-current">0:00</span>
-                <div class="progress-track-wrap"><input type="range" id="progress-bar" value="0" max="100" step="0.1"></div>
+                <div class="progress-track-wrap">
+                    <input type="range" id="progress-bar" value="0" max="100" step="0.1">
+                </div>
                 <span id="time-total">0:00</span>
             </div>
         </div>
+
+        <!-- DROITE : sleep + diffuser + queue + volume (desktop uniquement) -->
         <div class="player-right">
-<div class="sleep-timer-wrap">
-    <button class="ctrl-icon" id="btn-sleep" title="Timer de sommeil" onclick="toggleSleepDropdown()">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12.0488 2.0127A10 10 0 1021.988 11.951 8 8 0 0112.0488 2.013z"/></svg>
-    </button>
-    <div class="sleep-dropdown" id="sleep-dropdown">
-        <div class="sleep-dd-title">Timer de sommeil</div>
-        <button class="sleep-dd-item" id="sdi-15" onclick="setSleepTimer(15)">
-            <span>15 minutes</span><span class="sleep-countdown" id="sc-15"></span>
-        </button>
-        <button class="sleep-dd-item" id="sdi-30" onclick="setSleepTimer(30)">
-            <span>30 minutes</span><span class="sleep-countdown" id="sc-30"></span>
-        </button>
-        <button class="sleep-dd-item" id="sdi-60" onclick="setSleepTimer(60)">
-            <span>1 heure</span><span class="sleep-countdown" id="sc-60"></span>
-        </button>
-        <div class="sleep-dd-sep"></div>
-        <button class="sleep-dd-item cancel-item" id="sleep-cancel-btn"
-                onclick="cancelSleepTimer()" style="display:none">
-            Annuler le timer
-        </button>
-    </div>
-</div>
-            <button class="ctrl-icon" id="btn-connect" title="Diffuser sur"
-        onclick="openConnectPopup(this)">
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-        <path d="M1 18v3h3a3 3 0 00-3-3zm0-4v2a7 7 0 017 7h2a9 9 0 00-9-9zm0-4v2a11 11 0 0111 11h2C14 13 8 7 1 10zm21-8H2v2h20V2z"/>
-    </svg>
-</button>
-            <button class="ctrl-icon" id="btn-queue-toggle" onclick="toggleQueue()"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M15 4a1 1 0 100 2h6a1 1 0 100-2h-6zm0 5a1 1 0 100 2h6a1 1 0 100-2h-6zm0 5a1 1 0 100 2h6a1 1 0 100-2h-6zM6 4a1 1 0 00-1 1v8.5a2.5 2.5 0 101 0V5a1 1 0 00-1-1zm0 13a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"/></svg></button>
+            <div class="sleep-timer-wrap">
+                <button class="ctrl-icon" id="btn-sleep" title="Timer de sommeil" onclick="toggleSleepDropdown()">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12.0488 2.0127A10 10 0 1021.988 11.951 8 8 0 0112.0488 2.013z"/></svg>
+                </button>
+                <div class="sleep-dropdown" id="sleep-dropdown">
+                    <div class="sleep-dd-title">Timer de sommeil</div>
+                    <button class="sleep-dd-item" id="sdi-15" onclick="setSleepTimer(15)">
+                        <span>15 minutes</span><span class="sleep-countdown" id="sc-15"></span>
+                    </button>
+                    <button class="sleep-dd-item" id="sdi-30" onclick="setSleepTimer(30)">
+                        <span>30 minutes</span><span class="sleep-countdown" id="sc-30"></span>
+                    </button>
+                    <button class="sleep-dd-item" id="sdi-60" onclick="setSleepTimer(60)">
+                        <span>1 heure</span><span class="sleep-countdown" id="sc-60"></span>
+                    </button>
+                    <div class="sleep-dd-sep"></div>
+                    <button class="sleep-dd-item cancel-item" id="sleep-cancel-btn"
+                            onclick="cancelSleepTimer()" style="display:none">
+                        Annuler le timer
+                    </button>
+                </div>
+            </div>
+
+            <!-- 📡 Diffuser sur (desktop) -->
+            <button class="ctrl-icon" id="btn-connect" title="Diffuser sur" onclick="openConnectPopup(this)">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                    <path d="M1 18v3h3a3 3 0 00-3-3zm0-4v2a7 7 0 017 7h2a9 9 0 00-9-9zm0-4v2a11 11 0 0111 11h2C14 13 8 7 1 10zm21-8H2v2h20V2z"/>
+                </svg>
+            </button>
+
+            <button class="ctrl-icon" id="btn-queue-toggle" onclick="toggleQueue()">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M15 4a1 1 0 100 2h6a1 1 0 100-2h-6zm0 5a1 1 0 100 2h6a1 1 0 100-2h-6zm0 5a1 1 0 100 2h6a1 1 0 100-2h-6zM6 4a1 1 0 00-1 1v8.5a2.5 2.5 0 101 0V5a1 1 0 00-1-1zm0 13a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"/></svg>
+            </button>
+
             <div class="volume-control">
                 <button class="ctrl-icon" id="btn-mute" onclick="toggleMute()">
                     <svg id="icon-vol-on"  viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M13 3.536v16.928a1 1 0 01-1.6.8L5.333 17H3a2 2 0 01-2-2v-6a2 2 0 012-2h2.333L11.4 2.736a1 1 0 011.6.8zm4.153 3.415a1 1 0 011.352.44 8.942 8.942 0 010 9.218 1 1 0 01-1.79-.896 6.942 6.942 0 000-7.414 1 1 0 01.438-1.348zm-2.784 2.905a1 1 0 011.384.302 4.964 4.964 0 010 5.484 1 1 0 01-1.686-1.082 2.964 2.964 0 000-3.32 1 1 0 01.302-1.384z"/></svg>
@@ -292,10 +280,10 @@
                 <input type="range" id="volume-bar" value="100" max="100" step="1">
             </div>
         </div>
-        
+
         <div id="player-wrap" style="position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;pointer-events:none;">
-    <div id="player"></div>
-</div>
+            <div id="player"></div>
+        </div>
     </footer>
 </div>
 
@@ -308,10 +296,10 @@
 <div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
     <div class="modal-box" onclick="event.stopPropagation()">
         <h3 class="modal-title" id="modal-title">Créer une playlist</h3>
-        <p class="modal-sub" id="modal-sub">Donnez un nom à votre nouvelle playlist.</p>
+        <p class="modal-sub"  id="modal-sub">Donnez un nom à votre nouvelle playlist.</p>
         <input type="text" class="modal-input" id="modal-input" placeholder="Ma playlist #1" maxlength="60" autocomplete="off">
         <div class="modal-actions">
-            <button class="modal-btn-ghost" onclick="closeModal()">Annuler</button>
+            <button class="modal-btn-ghost"   onclick="closeModal()">Annuler</button>
             <button class="modal-btn-primary" id="modal-confirm-btn">Créer</button>
         </div>
     </div>
@@ -320,20 +308,24 @@
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
+<!-- ═══ SCRIPTS ═══ -->
 <script src="script.js"></script>
-    <div id="auth-modal" style="display:none;position:fixed;inset:0;background:#000c;z-index:9999;align-items:center;justify-content:center;">
+
+<!-- AUTH MODAL -->
+<div id="auth-modal" style="display:none;position:fixed;inset:0;background:#000c;z-index:9999;align-items:center;justify-content:center;">
     <div style="background:#1a1a1a;border-radius:12px;padding:40px;width:340px;display:flex;flex-direction:column;gap:16px;">
         <h2 style="color:#fff;margin:0;font-size:1.4rem;">🎵 Teslatube</h2>
         <p style="color:#b3b3b3;margin:0;font-size:.9rem;">Connectez-vous pour accéder à vos playlists.</p>
-        <input id="auth-email" type="email" placeholder="Email" style="padding:12px;border-radius:6px;border:none;background:#333;color:#fff;font-size:.95rem;">
-        <input id="auth-pass" type="password" placeholder="Mot de passe" style="padding:12px;border-radius:6px;border:none;background:#333;color:#fff;font-size:.95rem;">
+        <input id="auth-email" type="email"     placeholder="Email"         style="padding:12px;border-radius:6px;border:none;background:#333;color:#fff;font-size:.95rem;">
+        <input id="auth-pass"  type="password"  placeholder="Mot de passe"  style="padding:12px;border-radius:6px;border:none;background:#333;color:#fff;font-size:.95rem;">
         <p id="auth-error" style="color:#e91429;font-size:.85rem;margin:0;min-height:18px;"></p>
-        <button onclick="login()" style="padding:12px;background:#1db954;border:none;border-radius:24px;color:#000;font-weight:700;font-size:.95rem;cursor:pointer;">Se connecter</button>
+        <button onclick="login()"    style="padding:12px;background:#1db954;border:none;border-radius:24px;color:#000;font-weight:700;font-size:.95rem;cursor:pointer;">Se connecter</button>
         <button onclick="register()" style="padding:12px;background:transparent;border:1px solid #555;border-radius:24px;color:#fff;font-size:.95rem;cursor:pointer;">Créer un compte</button>
     </div>
 </div>
 
-    <nav class="bottom-nav">
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
     <button class="bottom-nav-btn active" onclick="showSearch(); setActiveNav(this)">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10.533 1.279c-5.18 0-9.407 4.226-9.407 9.407 0 5.18 4.226 9.407 9.407 9.407 2.19 0 4.2-.755 5.8-2.02l4.996 4.997a1 1 0 001.414-1.414l-4.994-4.994a9.368 9.368 0 002.191-6.976 9.407 9.407 0 00-9.407-9.407zm-7.407 9.407a7.407 7.407 0 1114.814 0 7.407 7.407 0 01-14.814 0z"/></svg>
         Recherche
@@ -347,123 +339,36 @@
         File
     </button>
 </nav>
- <script src="pwa.js"></script>   
 
-<!-- MODALE -->
-<div id="adtips-overlay" style="
-    display:none;
-    position:fixed;inset:0;z-index:3000;
-    background:rgba(0,0,0,.80);
-    backdrop-filter:blur(8px);
-    -webkit-backdrop-filter:blur(8px);
-    align-items:center;justify-content:center;
-    padding:16px;
-">
-    <div id="adtips-box" style="
-        background:#161616;
-        border:1px solid rgba(255,255,255,.1);
-        border-radius:16px;
-        padding:28px 24px;
-        width:100%;max-width:400px;
-        box-shadow:0 24px 80px rgba(0,0,0,.8);
-        position:relative;
-    ">
-        <!-- Close -->
-        <button onclick="closeAdTipsModal()" style="
-            position:absolute;top:14px;right:14px;
-            background:rgba(255,255,255,.07);border:none;
-            color:#fff;width:28px;height:28px;border-radius:50%;
-            font-size:1rem;cursor:pointer;
-            display:flex;align-items:center;justify-content:center;
-            line-height:1;
-        ">×</button>
- 
-        <!-- Header -->
+<script src="pwa.js"></script>
+
+<!-- MODALE ANTI-PUBS -->
+<div id="adtips-overlay" style="display:none;position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.80);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:16px;">
+    <div id="adtips-box" style="background:#161616;border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:28px 24px;width:100%;max-width:400px;box-shadow:0 24px 80px rgba(0,0,0,.8);position:relative;">
+        <button onclick="closeAdTipsModal()" style="position:absolute;top:14px;right:14px;background:rgba(255,255,255,.07);border:none;color:#fff;width:28px;height:28px;border-radius:50%;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">×</button>
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
             <span style="font-size:1.4rem">🚫</span>
             <h3 style="color:#fff;font-size:1.1rem;font-weight:700;margin:0;">Supprimer les publicités</h3>
         </div>
-        <p style="color:#888;font-size:.8rem;margin:0 0 20px;line-height:1.5;">
-            Les pubs viennent de YouTube et ne peuvent pas être supprimées depuis l'app.
-            Voici la solution selon votre appareil&nbsp;:
-        </p>
- 
-        <!-- Tabs -->
-        <div id="adtips-tabs" style="
-            display:flex;gap:6px;
-            background:rgba(255,255,255,.05);
-            border-radius:10px;padding:4px;
-            margin-bottom:18px;
-        ">
-            <button class="adtab active" onclick="switchAdTab('android',this)" style="flex:1;">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" style="margin-right:5px;vertical-align:middle;"><path d="M17.523 15.341l1.2 2.08a.5.5 0 01-.866.5l-1.22-2.11A7.945 7.945 0 0112 16.5a7.945 7.945 0 01-4.637-1.189l-1.22 2.11a.5.5 0 01-.866-.5l1.2-2.08A7.977 7.977 0 014 9h16a7.977 7.977 0 01-2.477 6.341zM9.5 12a1 1 0 100-2 1 1 0 000 2zm5 0a1 1 0 100-2 1 1 0 000 2zM7.088 4.695L5.965 2.68a.5.5 0 01.87-.494l1.15 2.03A7.958 7.958 0 0112 3.5c1.47 0 2.846.397 4.015 1.087l1.15-2.03a.5.5 0 01.87.494L16.912 4.695A7.98 7.98 0 0120 9H4a7.98 7.98 0 013.088-4.305z"/></svg>
-                Android
-            </button>
-            <button class="adtab" onclick="switchAdTab('ios',this)" style="flex:1;">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" style="margin-right:5px;vertical-align:middle;"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-                iOS
-            </button>
-            <button class="adtab" onclick="switchAdTab('desktop',this)" style="flex:1;">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" style="margin-right:5px;vertical-align:middle;"><path d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h7v2H8a1 1 0 100 2h8a1 1 0 100-2h-3v-2h7a2 2 0 002-2V7a2 2 0 00-2-2H4z"/></svg>
-                Desktop
-            </button>
+        <p style="color:#888;font-size:.8rem;margin:0 0 20px;line-height:1.5;">Les pubs viennent de YouTube et ne peuvent pas être supprimées depuis l'app. Voici la solution selon votre appareil&nbsp;:</p>
+        <div id="adtips-tabs" style="display:flex;gap:6px;background:rgba(255,255,255,.05);border-radius:10px;padding:4px;margin-bottom:18px;">
+            <button class="adtab active" onclick="switchAdTab('android',this)" style="flex:1;"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" style="margin-right:5px;vertical-align:middle;"><path d="M17.523 15.341l1.2 2.08a.5.5 0 01-.866.5l-1.22-2.11A7.945 7.945 0 0112 16.5a7.945 7.945 0 01-4.637-1.189l-1.22 2.11a.5.5 0 01-.866-.5l1.2-2.08A7.977 7.977 0 014 9h16a7.977 7.977 0 01-2.477 6.341zM9.5 12a1 1 0 100-2 1 1 0 000 2zm5 0a1 1 0 100-2 1 1 0 000 2zM7.088 4.695L5.965 2.68a.5.5 0 01.87-.494l1.15 2.03A7.958 7.958 0 0112 3.5c1.47 0 2.846.397 4.015 1.087l1.15-2.03a.5.5 0 01.87.494L16.912 4.695A7.98 7.98 0 0120 9H4a7.98 7.98 0 013.088-4.305z"/></svg>Android</button>
+            <button class="adtab" onclick="switchAdTab('ios',this)" style="flex:1;"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" style="margin-right:5px;vertical-align:middle;"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>iOS</button>
+            <button class="adtab" onclick="switchAdTab('desktop',this)" style="flex:1;"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" style="margin-right:5px;vertical-align:middle;"><path d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h7v2H8a1 1 0 100 2h8a1 1 0 100-2h-3v-2h7a2 2 0 002-2V7a2 2 0 00-2-2H4z"/></svg>Desktop</button>
         </div>
- 
-        <!-- Tab content -->
         <div id="tab-android" class="adtab-content">
-            <div class="adtip-card best">
-                <div class="adtip-badge">⭐ Recommandé</div>
-                <div class="adtip-name">Firefox + uBlock Origin</div>
-                <div class="adtip-desc">Ouvrez TeslaTube dans Firefox, installez l'extension uBlock Origin depuis les add-ons Firefox. Blocage 100% des pubs YouTube.</div>
-                <div style="display:flex;gap:8px;margin-top:12px;">
-                    <a href="https://play.google.com/store/apps/details?id=org.mozilla.firefox" target="_blank" class="adtip-btn">Firefox</a>
-                    <a href="https://addons.mozilla.org/fr/firefox/addon/ublock-origin/" target="_blank" class="adtip-btn">uBlock Origin</a>
-                </div>
-            </div>
-            <div class="adtip-card">
-                <div class="adtip-name">Brave Browser</div>
-                <div class="adtip-desc">Bloqueur intégré, aucune configuration. Ouvrez simplement TeslaTube dans Brave.</div>
-                <a href="https://play.google.com/store/apps/details?id=com.brave.browser" target="_blank" class="adtip-btn" style="margin-top:12px;display:inline-block;">Télécharger Brave</a>
-            </div>
-            <div class="adtip-card">
-                <div class="adtip-name">YouTube Premium</div>
-                <div class="adtip-desc">Si vous avez un abonnement Premium, connectez-vous sur YouTube dans le même navigateur — les pubs disparaissent automatiquement.</div>
-            </div>
+            <div class="adtip-card best"><div class="adtip-badge">⭐ Recommandé</div><div class="adtip-name">Firefox + uBlock Origin</div><div class="adtip-desc">Ouvrez TeslaTube dans Firefox, installez l'extension uBlock Origin depuis les add-ons Firefox. Blocage 100% des pubs YouTube.</div><div style="display:flex;gap:8px;margin-top:12px;"><a href="https://play.google.com/store/apps/details?id=org.mozilla.firefox" target="_blank" class="adtip-btn">Firefox</a><a href="https://addons.mozilla.org/fr/firefox/addon/ublock-origin/" target="_blank" class="adtip-btn">uBlock Origin</a></div></div>
+            <div class="adtip-card"><div class="adtip-name">Brave Browser</div><div class="adtip-desc">Bloqueur intégré, aucune configuration. Ouvrez simplement TeslaTube dans Brave.</div><a href="https://play.google.com/store/apps/details?id=com.brave.browser" target="_blank" class="adtip-btn" style="margin-top:12px;display:inline-block;">Télécharger Brave</a></div>
+            <div class="adtip-card"><div class="adtip-name">YouTube Premium</div><div class="adtip-desc">Si vous avez un abonnement Premium, connectez-vous sur YouTube dans le même navigateur — les pubs disparaissent automatiquement.</div></div>
         </div>
- 
         <div id="tab-ios" class="adtip-content" style="display:none;">
-            <div class="adtip-card best">
-                <div class="adtip-badge">⭐ Recommandé</div>
-                <div class="adtip-name">Brave Browser</div>
-                <div class="adtip-desc">Le plus simple sur iOS. Bloqueur intégré, aucune configuration. Ouvrez TeslaTube dans Brave.</div>
-                <a href="https://apps.apple.com/fr/app/brave-private-web-browser/id1052879175" target="_blank" class="adtip-btn" style="margin-top:12px;display:inline-block;">Télécharger Brave</a>
-            </div>
-            <div class="adtip-card">
-                <div class="adtip-name">AdGuard + Safari</div>
-                <div class="adtip-desc">Installez AdGuard depuis l'App Store, activez l'extension dans Safari → Réglages. Efficace mais pas à 100% sur les iframes YouTube.</div>
-                <a href="https://apps.apple.com/fr/app/adguard-adblock-privacy/id1047223162" target="_blank" class="adtip-btn" style="margin-top:12px;display:inline-block;">AdGuard</a>
-            </div>
-            <div class="adtip-card">
-                <div class="adtip-name">YouTube Premium</div>
-                <div class="adtip-desc">Connectez-vous sur YouTube dans le même navigateur avec un compte Premium — les pubs disparaissent dans le player embarqué.</div>
-            </div>
+            <div class="adtip-card best"><div class="adtip-badge">⭐ Recommandé</div><div class="adtip-name">Brave Browser</div><div class="adtip-desc">Le plus simple sur iOS. Bloqueur intégré, aucune configuration. Ouvrez TeslaTube dans Brave.</div><a href="https://apps.apple.com/fr/app/brave-private-web-browser/id1052879175" target="_blank" class="adtip-btn" style="margin-top:12px;display:inline-block;">Télécharger Brave</a></div>
+            <div class="adtip-card"><div class="adtip-name">AdGuard + Safari</div><div class="adtip-desc">Installez AdGuard depuis l'App Store, activez l'extension dans Safari → Réglages. Efficace mais pas à 100% sur les iframes YouTube.</div><a href="https://apps.apple.com/fr/app/adguard-adblock-privacy/id1047223162" target="_blank" class="adtip-btn" style="margin-top:12px;display:inline-block;">AdGuard</a></div>
+            <div class="adtip-card"><div class="adtip-name">YouTube Premium</div><div class="adtip-desc">Connectez-vous sur YouTube dans le même navigateur avec un compte Premium — les pubs disparaissent dans le player embarqué.</div></div>
         </div>
- 
         <div id="tab-desktop" class="adtip-content" style="display:none;">
-            <div class="adtip-card best">
-                <div class="adtip-badge">⭐ Recommandé</div>
-                <div class="adtip-name">uBlock Origin</div>
-                <div class="adtip-desc">Disponible sur Chrome, Firefox, Edge. Blocage 100% des pubs YouTube, aucune configuration requise.</div>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
-                    <a href="https://chromewebstore.google.com/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm" target="_blank" class="adtip-btn">Chrome</a>
-                    <a href="https://addons.mozilla.org/fr/firefox/addon/ublock-origin/" target="_blank" class="adtip-btn">Firefox</a>
-                    <a href="https://microsoftedge.microsoft.com/addons/detail/ublock-origin/odfafepnkmbhccpbejgmiehpchacaeak" target="_blank" class="adtip-btn">Edge</a>
-                </div>
-            </div>
-            <div class="adtip-card">
-                <div class="adtip-name">YouTube Premium</div>
-                <div class="adtip-desc">Connectez-vous sur YouTube dans le même navigateur avec un compte Premium — les pubs disparaissent automatiquement.</div>
-            </div>
+            <div class="adtip-card best"><div class="adtip-badge">⭐ Recommandé</div><div class="adtip-name">uBlock Origin</div><div class="adtip-desc">Disponible sur Chrome, Firefox, Edge. Blocage 100% des pubs YouTube, aucune configuration requise.</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;"><a href="https://chromewebstore.google.com/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm" target="_blank" class="adtip-btn">Chrome</a><a href="https://addons.mozilla.org/fr/firefox/addon/ublock-origin/" target="_blank" class="adtip-btn">Firefox</a><a href="https://microsoftedge.microsoft.com/addons/detail/ublock-origin/odfafepnkmbhccpbejgmiehpchacaeak" target="_blank" class="adtip-btn">Edge</a></div></div>
+            <div class="adtip-card"><div class="adtip-name">YouTube Premium</div><div class="adtip-desc">Connectez-vous sur YouTube dans le même navigateur avec un compte Premium — les pubs disparaissent automatiquement.</div></div>
         </div>
     </div>
 </div>
@@ -473,9 +378,7 @@
     <div id="video-overlay-bg"></div>
     <div id="video-overlay-content">
         <button id="video-overlay-close" onclick="closeVideoOverlay()">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                <path d="M5.293 5.293a1 1 0 011.414 0L12 10.586l5.293-5.293a1 1 0 111.414 1.414L13.414 12l5.293 5.293a1 1 0 01-1.414 1.414L12 13.414l-5.293 5.293a1 1 0 01-1.414-1.414L10.586 12 5.293 6.707a1 1 0 010-1.414z"/>
-            </svg>
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M5.293 5.293a1 1 0 011.414 0L12 10.586l5.293-5.293a1 1 0 111.414 1.414L13.414 12l5.293 5.293a1 1 0 01-1.414 1.414L12 13.414l-5.293 5.293a1 1 0 01-1.414-1.414L10.586 12 5.293 6.707a1 1 0 010-1.414z"/></svg>
         </button>
         <div id="video-overlay-screen"></div>
         <div id="video-overlay-info">
@@ -484,76 +387,35 @@
         </div>
     </div>
 </div>
-  <!-- ─────────────────────────────────────
-     2. MODALE D'IMPORT
-     À placer avant </body> dans le HTML
-     ───────────────────────────────────── -->
+
+<!-- IMPORT SPOTIFY -->
 <div id="spotify-import-overlay"
-     style="display:none;position:fixed;inset:0;z-index:2500;
-            background:rgba(0,0,0,.80);backdrop-filter:blur(8px);
-            -webkit-backdrop-filter:blur(8px);
-            align-items:center;justify-content:center;padding:16px;"
+     style="display:none;position:fixed;inset:0;z-index:2500;background:rgba(0,0,0,.80);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:16px;"
      onclick="if(event.target===this)closeImportSpotifyModal()">
- 
-    <div style="background:#161616;border:1px solid rgba(255,255,255,.1);
-                border-radius:16px;padding:32px 28px;width:100%;max-width:460px;
-                box-shadow:0 24px 80px rgba(0,0,0,.8);position:relative;">
- 
-        <!-- Fermer -->
-        <button onclick="closeImportSpotifyModal()"
-                style="position:absolute;top:14px;right:14px;
-                       background:rgba(255,255,255,.07);border:none;
-                       color:#fff;width:30px;height:30px;border-radius:50%;
-                       font-size:1.1rem;cursor:pointer;
-                       display:flex;align-items:center;justify-content:center;">×</button>
- 
-        <!-- En-tête -->
+    <div style="background:#161616;border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:32px 28px;width:100%;max-width:460px;box-shadow:0 24px 80px rgba(0,0,0,.8);position:relative;">
+        <button onclick="closeImportSpotifyModal()" style="position:absolute;top:14px;right:14px;background:rgba(255,255,255,.07);border:none;color:#fff;width:30px;height:30px;border-radius:50%;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
-            <svg viewBox="0 0 24 24" width="28" height="28" fill="#1DB954">
-                <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 01-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.623.623 0 01-.277-1.215c3.809-.87 7.076-.496 9.712 1.115a.624.624 0 01.207.857zm1.223-2.722a.78.78 0 01-1.072.257c-2.687-1.652-6.785-2.131-9.965-1.166a.78.78 0 01-.973-.519.781.781 0 01.519-.972c3.632-1.102 8.147-.568 11.234 1.328a.78.78 0 01.257 1.072zm.105-2.835c-3.223-1.914-8.54-2.09-11.618-1.156a.935.935 0 01-.582-1.782c3.532-1.153 9.404-.93 13.115 1.338a.933.933 0 11-.915 1.6z"/>
-            </svg>
-            <h3 style="color:#fff;font-size:1.15rem;font-weight:700;margin:0;">
-                Importer depuis Spotify
-            </h3>
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="#1DB954"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 01-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.623.623 0 01-.277-1.215c3.809-.87 7.076-.496 9.712 1.115a.624.624 0 01.207.857zm1.223-2.722a.78.78 0 01-1.072.257c-2.687-1.652-6.785-2.131-9.965-1.166a.78.78 0 01-.973-.519.781.781 0 01.519-.972c3.632-1.102 8.147-.568 11.234 1.328a.78.78 0 01.257 1.072zm.105-2.835c-3.223-1.914-8.54-2.09-11.618-1.156a.935.935 0 01-.582-1.782c3.532-1.153 9.404-.93 13.115 1.338a.933.933 0 11-.915 1.6z"/></svg>
+            <h3 style="color:#fff;font-size:1.15rem;font-weight:700;margin:0;">Importer depuis Spotify</h3>
         </div>
-        <p style="color:#888;font-size:.82rem;margin:0 0 22px;line-height:1.6;">
-            Collez un lien Spotify <strong style="color:#b3b3b3">album</strong> ou
-            <strong style="color:#b3b3b3">playlist publique</strong>.
-            TeslaTube cherchera chaque titre sur YouTube et créera une playlist.
-        </p>
- 
-        <!-- Champ URL -->
+        <p style="color:#888;font-size:.82rem;margin:0 0 22px;line-height:1.6;">Collez un lien Spotify <strong style="color:#b3b3b3">album</strong> ou <strong style="color:#b3b3b3">playlist publique</strong>. TeslaTube cherchera chaque titre sur YouTube et créera une playlist.</p>
         <div style="display:flex;gap:8px;margin-bottom:18px;">
-            <input id="spotify-url-input"
-                   type="url"
-                   placeholder="https://open.spotify.com/album/…"
+            <input id="spotify-url-input" type="url" placeholder="https://open.spotify.com/album/…"
                    autocomplete="off" autocorrect="off" spellcheck="false"
-                   style="flex:1;padding:12px 14px;border-radius:8px;
-                          background:rgba(255,255,255,.07);
-                          border:1px solid rgba(255,255,255,.12);
-                          color:#fff;font-size:.88rem;font-family:inherit;
-                          outline:none;transition:border-color .18s;"
+                   style="flex:1;padding:12px 14px;border-radius:8px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:#fff;font-size:.88rem;font-family:inherit;outline:none;transition:border-color .18s;"
                    onfocus="this.style.borderColor='rgba(29,185,84,.5)'"
                    onblur="this.style.borderColor='rgba(255,255,255,.12)'"
                    onkeydown="if(event.key==='Enter')importFromSpotify()">
-            <button id="spotify-import-btn"
-                    onclick="importFromSpotify()"
-                    style="padding:12px 20px;background:#1db954;border:none;
-                           border-radius:8px;color:#000;font-weight:700;
-                           font-size:.88rem;font-family:inherit;cursor:pointer;
-                           white-space:nowrap;transition:background .18s,transform .15s;"
+            <button id="spotify-import-btn" onclick="importFromSpotify()"
+                    style="padding:12px 20px;background:#1db954;border:none;border-radius:8px;color:#000;font-weight:700;font-size:.88rem;font-family:inherit;cursor:pointer;white-space:nowrap;transition:background .18s,transform .15s;"
                     onmouseover="this.style.background='#21d15e';this.style.transform='scale(1.03)'"
-                    onmouseout="this.style.background='#1db954';this.style.transform='scale(1)'">
-                Importer
-            </button>
+                    onmouseout="this.style.background='#1db954';this.style.transform='scale(1)'">Importer</button>
         </div>
- 
-        <!-- Zone de statut -->
         <div id="spotify-import-status" style="font-size:.83rem;line-height:1.7;min-height:20px;"></div>
     </div>
-</div>  
+</div>
 
-    <script src="mobile-patch.js"></script>
-    <script src="connect.js"></script>
+<script src="mobile-patch.js"></script>
+<script src="connect.js"></script>
 </body>
 </html>
