@@ -240,6 +240,7 @@ auth.onAuthStateChanged(user => {
         currentUserId = user.uid;
         startPlaylistListener();
         showSyncIndicator();
+       initConnect();
         document.getElementById('auth-modal').style.display = 'none';
     } else {
         showAuthModal();
