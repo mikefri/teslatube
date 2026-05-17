@@ -319,3 +319,39 @@
         right: 6px !important;
     }
 }
+/* ── Bottom sheet mobile ── */
+@media (max-width: 639px) {
+    #connect-popup.connect-popup-mobile {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        top: auto;
+        border-radius: 16px 16px 0 0;
+        min-width: unset;
+        padding-bottom: calc(env(safe-area-inset-bottom) + 10px);
+        animation: connectSlideUp .22s cubic-bezier(.34,1.56,.64,1) both;
+    }
+
+    @keyframes connectSlideUp {
+        from { transform: translateY(100%); }
+        to   { transform: translateY(0); }
+    }
+
+    .connect-handle {
+        width: 36px;
+        height: 4px;
+        background: rgba(255,255,255,.2);
+        border-radius: 2px;
+        margin: 10px auto 4px;
+    }
+
+    .connect-device-btn {
+        padding: 14px 20px; /* plus grand pour les doigts */
+    }
+
+    .connect-device-icon svg {
+        width: 22px;
+        height: 22px;
+    }
+}
