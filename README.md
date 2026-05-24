@@ -24,7 +24,7 @@
 - 📱 **PWA installable** sur Android, iOS et desktop
 - 🎮 **Media Session API** — contrôles sur écran de verrouillage / notification
 - ⌨️ **Raccourcis clavier** — `Espace`, `→`, `←`
-- 🚫 **Guide anti-pubs** intégré (Firefox + uBlock, Brave, AdGuard…)
+
 
 ---
 
