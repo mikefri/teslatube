@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════
-   TESLATUB — script.js  v3.6
+   TESLATUB — script.js  v4.1
    Fixes :
      1. Player YouTube pas encore prêt → pendingTrack
      2. togglePlaylistPlay défini en double → une seule version
